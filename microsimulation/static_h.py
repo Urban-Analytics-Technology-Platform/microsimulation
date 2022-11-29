@@ -41,6 +41,11 @@ class SequentialMicrosynthesisH:
         # load the output from the microsynthesis (census 2011 based)
         self.base_population = self.__get_base_populationdata()
 
+      # Fix for double run
+        for k in self.snhpdata.data.keys():
+          self.snhpdata.data[k]['PROJECTED_YEAR_NAME'] = self.snhpdata.data[k]['PROJECTED_YEAR_NAME'].astype(int)
+
+
     def run(self, base_year, target_year):
         """
         Run the sequence
