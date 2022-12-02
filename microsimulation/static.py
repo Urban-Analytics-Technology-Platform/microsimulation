@@ -42,6 +42,10 @@ class SequentialMicrosynthesis(common.Base):
     else:
       self.snpp_api = snppdata.SNPPData(cache_dir)
 
+      # Fix for double run
+      for k in self.snhpdata.data.keys():
+        self.snpp_api.data[k]['PROJECTED_YEAR_NAME'] = self.snhpdata.data[k]['PROJECTED_YEAR_NAME'].astype(int)
+
     # validation
     if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
       raise ValueError(self.variant + " is not a known projection variant")
