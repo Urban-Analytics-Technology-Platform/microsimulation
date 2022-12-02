@@ -43,7 +43,7 @@ class SequentialMicrosynthesis(common.Base):
       self.snpp_api = snppdata.SNPPData(cache_dir)
 
       # Fix for double run
-      for k in self.snhpdata.data.keys():
+      for k in self.snpp_api.data.keys():
         self.snpp_api.data[k]['PROJECTED_YEAR_NAME'] = self.snpp_api.data[k]['PROJECTED_YEAR_NAME'].astype(int)
 
     # validation
