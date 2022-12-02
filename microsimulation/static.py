@@ -44,7 +44,7 @@ class SequentialMicrosynthesis(common.Base):
 
       # Fix for double run
       for k in self.snhpdata.data.keys():
-        self.snpp_api.data[k]['PROJECTED_YEAR_NAME'] = self.snhpdata.data[k]['PROJECTED_YEAR_NAME'].astype(int)
+        self.snpp_api.data[k]['PROJECTED_YEAR_NAME'] = self.snpp_api.data[k]['PROJECTED_YEAR_NAME'].astype(int)
 
     # validation
     if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
