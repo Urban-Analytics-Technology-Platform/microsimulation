@@ -127,6 +127,9 @@ class SequentialMicrosynthesis(common.Base):
     # now the full seeded microsynthesis
     if self.fast_mode:
       msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float), age_sex.astype(float)])
+      if not msynth["conv"]:
+        print(f"Failed to converge with {year - 1} seed, retry applying epsilon...")
+        msynth = hl.ipf(self.seed + np.finfo(np.float64).tiny, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float), age_sex.astype(float)])  
     else:
       msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
     if not msynth["conv"]:
