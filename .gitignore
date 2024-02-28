@@ -123,4 +123,4 @@ notebooks/
 
 # spenser-rs
 target/
-spenser-rs/data
+spenser-rs/outputs
