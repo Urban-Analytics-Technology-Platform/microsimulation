@@ -1000,7 +1000,7 @@ impl Assignment {
             self.info_stats();
 
             // # TODO if partner hasnt been assigned then household may be incorrectly marked filled
-            info!(">>> Assigning child 2 to single-parent households");
+            info!(">>> Assigning child 2 to couple households");
             self.sample_child(msoa, &oas, 4, false, Parent::Couple)?;
             self.info_stats();
 
