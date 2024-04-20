@@ -24,9 +24,20 @@ where
     let s = match bool {
         Some(true) => "True",
         Some(false) => "False",
-        None => "",
+        None => "False",
     };
     serializer.serialize_str(s)
+}
+
+pub fn serialize_hrpid<S>(pid: &Option<PID>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::ser::Serializer,
+{
+    let s = match pid {
+        Some(pid) => format!("{}", pid.0),
+        None => "-1".to_string(),
+    };
+    serializer.serialize_str(&s)
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -64,6 +75,7 @@ pub struct Household {
     #[serde(rename = "LC4202_C_CARSNO")]
     pub lc4202_c_carsno: UInt,
     #[serde(rename = "HRPID")]
+    #[serde(serialize_with = "serialize_hrpid")]
     pub hrpid: Option<PID>,
     #[serde(rename = "FILLED")]
     #[serde(serialize_with = "serialize_bool")]

@@ -20,6 +20,17 @@ impl From<PID> for usize {
     }
 }
 
+pub fn serialize_hid<S>(hid: &Option<HID>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::ser::Serializer,
+{
+    let s = match hid {
+        Some(hid) => format!("{}", hid.0),
+        None => "-1".to_string(),
+    };
+    serializer.serialize_str(&s)
+}
+
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Person {
     #[serde(rename = "PID")]
@@ -33,6 +44,7 @@ pub struct Person {
     #[serde(rename = "DC2101EW_C_ETHPUK11")]
     pub eth: Eth,
     #[serde(rename = "HID")]
+    #[serde(serialize_with = "serialize_hid")]
     pub hid: Option<HID>,
 }
 
