@@ -247,7 +247,8 @@ impl Queues {
             return_some!(pid);
         }
         if let Some(v) = self.adults_by_area.get_mut(&msoa.to_owned()) {
-            update_pid_vec(v, &mut self.matched, &mut self.unmatched);
+            // Retain only unmatched PIDs
+            v.retain(|pid| !self.matched.contains(pid));
             if let Some((idx, pid)) = get_closest(age, v, p_data) {
                 v.remove(idx);
                 self.unmatched.remove(&pid);
