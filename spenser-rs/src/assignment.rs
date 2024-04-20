@@ -689,7 +689,6 @@ impl Assignment {
                 self.queues.matched.insert(pid);
                 self.queues.unmatched.remove(&pid);
                 debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
-                // TODO: handle assignment to household? Not included in python.
             }
         }
         Ok(())
@@ -732,7 +731,6 @@ impl Assignment {
                     let pid = person.pid;
                     self.queues.matched.insert(pid);
                     self.queues.unmatched.remove(&pid);
-                    // TODO: handle assignment to household? Not included in python.
                 }
             }
         }
