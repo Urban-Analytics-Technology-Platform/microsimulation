@@ -984,6 +984,8 @@ impl Assignment {
             self.sample_hrp(msoa, &oas)?;
             self.info_stats();
 
+            // TODO: mark_filled bools set to match python, check these are correct
+
             // Sample partner
             // TODO: check all partners assigned (from python)
             info!(">>> Assigning partners to HRPs where appropriate");
@@ -999,7 +1001,7 @@ impl Assignment {
             self.info_stats();
 
             info!(">>> Assigning child 3 to single-parent households");
-            self.sample_child(msoa, &oas, 4, true, Parent::Single)?;
+            self.sample_child(msoa, &oas, 4, false, Parent::Single)?;
             self.info_stats();
 
             // # TODO if partner hasnt been assigned then household may be incorrectly marked filled
@@ -1009,7 +1011,7 @@ impl Assignment {
 
             // # TODO if partner hasnt been assigned then household may be incorrectly marked filled
             info!(">>> Assigning child 2 to single-parent households");
-            self.sample_child(msoa, &oas, 4, true, Parent::Couple)?;
+            self.sample_child(msoa, &oas, 4, false, Parent::Couple)?;
             self.info_stats();
 
             info!(">>> Multi-person households");
