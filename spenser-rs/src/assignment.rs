@@ -1071,9 +1071,23 @@ impl Assignment {
 mod tests {
     use std::str::FromStr;
 
+    use lazy_static::lazy_static;
+
     use crate::config::{Projection, Resolution};
 
     use super::*;
+
+    lazy_static! {
+        static ref TEST_CONFIG: Config = Config {
+            person_resolution: Resolution::MSOA11,
+            household_resolution: Resolution::OA11,
+            projection: Projection::PPP,
+            strict: false,
+            year: Year(2020),
+            data_dir: PathBuf::from_str("tests/data/").unwrap(),
+            profile: false,
+        };
+    }
 
     #[test]
     fn test_read_geog_lookup() -> anyhow::Result<()> {
@@ -1084,32 +1098,14 @@ mod tests {
 
     #[test]
     fn test_assignment_new() -> anyhow::Result<()> {
-        let config = Config {
-            person_resolution: Resolution::MSOA11,
-            household_resolution: Resolution::OA11,
-            projection: Projection::PPP,
-            strict: false,
-            year: Year(2020),
-            data_dir: PathBuf::from_str("tests/data/")?,
-            profile: false,
-        };
-        Assignment::new("E09000001", 0, &config)?;
+        Assignment::new("E09000001", 0, &TEST_CONFIG)?;
         Ok(())
     }
 
     #[test]
     fn test_assignment_run() -> anyhow::Result<()> {
         env_logger::init();
-        let config = Config {
-            person_resolution: Resolution::MSOA11,
-            household_resolution: Resolution::OA11,
-            projection: Projection::PPP,
-            strict: false,
-            year: Year(2020),
-            data_dir: PathBuf::from_str("tests/data/")?,
-            profile: false,
-        };
-        let mut assignment = Assignment::new("E09000001", 0, &config)?;
+        let mut assignment = Assignment::new("E09000001", 0, &TEST_CONFIG)?;
         assignment.run()?;
 
         // Test only each person only assigned to single household
@@ -1134,7 +1130,30 @@ mod tests {
                 assert_eq!(person.hid.unwrap(), hh.hid)
             }
         });
+        Ok(())
+    }
 
+    #[test]
+    fn test_assignment_determinism() -> anyhow::Result<()> {
+        // env_logger::init();
+        let mut assignment_0_0 = Assignment::new("E09000001", 0, &TEST_CONFIG)?;
+        assignment_0_0.run()?;
+        let mut assignment_0_1 = Assignment::new("E09000001", 0, &TEST_CONFIG)?;
+        assignment_0_1.run()?;
+        let mut assignment_1_0 = Assignment::new("E09000001", 1, &TEST_CONFIG)?;
+        assignment_1_0.run()?;
+        let mut assignment_1_1 = Assignment::new("E09000001", 1, &TEST_CONFIG)?;
+        assignment_1_1.run()?;
+
+        // Equal seeds used on different runs should generate equal assignments
+        assert_eq!(assignment_0_0.p_data, assignment_0_1.p_data);
+        assert_eq!(assignment_0_0.h_data, assignment_0_1.h_data);
+        assert_eq!(assignment_1_0.p_data, assignment_1_1.p_data);
+        assert_eq!(assignment_1_0.h_data, assignment_1_1.h_data);
+
+        // Different seeds used on different runs should generate different assignments
+        assert_ne!(assignment_0_0.p_data, assignment_1_0.p_data);
+        assert_ne!(assignment_0_0.h_data, assignment_1_0.h_data);
         Ok(())
     }
 }

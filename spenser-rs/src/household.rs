@@ -29,7 +29,7 @@ where
     serializer.serialize_str(s)
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct Household {
     #[serde(rename = "HID")]
     pub hid: HID,
