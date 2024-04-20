@@ -1087,6 +1087,7 @@ mod tests {
             data_dir: PathBuf::from_str("tests/data/").unwrap(),
             profile: false,
         };
+        static ref ENV_LOGGER: () = env_logger::init();
     }
 
     #[test]
@@ -1104,7 +1105,9 @@ mod tests {
 
     #[test]
     fn test_assignment_run() -> anyhow::Result<()> {
-        env_logger::init();
+        // Init env logger
+        let _ = &ENV_LOGGER;
+
         let mut assignment = Assignment::new("E09000001", 0, &TEST_CONFIG)?;
         assignment.run()?;
 
