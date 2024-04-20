@@ -45,7 +45,7 @@ pub enum AdultOrChild {
     Child,
 }
 
-fn get_closest(age: Age, v: &Vec<PID>, p_data: &TiVec<PID, Person>) -> Option<(usize, PID)> {
+fn get_closest(age: Age, v: &[PID], p_data: &TiVec<PID, Person>) -> Option<(usize, PID)> {
     // Custom algorithm to get PID with smallest difference in age
     if !v.is_empty() {
         // TODO: possibly improve this as O(N)
