@@ -601,7 +601,7 @@ impl Assignment {
             })
             .collect();
 
-        for (_, household) in c_ref.iter_mut().enumerate() {
+        for household in c_ref.iter_mut() {
             let ctype = household.qs420_cell;
 
             let nocc = household.communal_size;
@@ -623,9 +623,7 @@ impl Assignment {
                         break;
                     }
                 }
-                // TODO: can nocc be made usize in data schema?
                 if i32::try_from(pids.len()).expect("Not i32").lt(&nocc) {
-                    // TODO: warning logging
                     warn!("cannot assign to communal: {:?}", household);
                     // Put PIDs back
                     // TODO: refactor into method on queues
@@ -640,6 +638,10 @@ impl Assignment {
                         map.get_mut(msoa)
                             .expect("MSOA does not exist in lookup")
                             .push(pid);
+
+                        // Add PID back to unmatched queue and remove from matched
+                        self.queues.unmatched.insert(pid);
+                        self.queues.matched.remove(&pid);
                     }
                 }
 
@@ -1107,7 +1109,32 @@ mod tests {
             data_dir: PathBuf::from_str("tests/data/")?,
             profile: false,
         };
-        Assignment::new("E09000001", 0, &config)?.run()?;
+        let mut assignment = Assignment::new("E09000001", 0, &config)?;
+        assignment.run()?;
+
+        // Test only each person only assigned to single household
+        let mut counts: HashMap<PID, usize> = HashMap::new();
+        assignment
+            .h_data
+            .iter()
+            .flat_map(|hh| hh.hrpid)
+            .for_each(|pid| {
+                counts.entry(pid).and_modify(|v| *v += 1).or_insert(1);
+            });
+        let multi_assigned_pids = counts
+            .iter()
+            .filter_map(|(k, &v)| if v > 1 { Some(*k) } else { None })
+            .collect::<Vec<_>>();
+        assert_eq!(multi_assigned_pids.len(), 0);
+
+        // Test assigned household PIDs matches people's household HID
+        assignment.h_data.iter().for_each(|hh| {
+            if let Some(pid) = hh.hrpid {
+                let person = assignment.p_data.get(pid).unwrap();
+                assert_eq!(person.hid.unwrap(), hh.hid)
+            }
+        });
+
         Ok(())
     }
 }
