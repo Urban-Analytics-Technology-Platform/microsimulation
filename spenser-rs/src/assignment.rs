@@ -695,12 +695,7 @@ impl Assignment {
         Ok(())
     }
 
-    fn assign_surplus_children(
-        &mut self,
-        msoa: &MSOA,
-        oas: &HashSet<OA>,
-        queues: &mut Queues,
-    ) -> anyhow::Result<()> {
+    fn assign_surplus_children(&mut self, msoa: &MSOA, oas: &HashSet<OA>) -> anyhow::Result<()> {
         for eth in [2, 3, 4, 5, 6, 7, 8].into_iter().map(Eth) {
             let c_unassigned: Vec<&mut Person> = self
                 .p_data
@@ -735,8 +730,8 @@ impl Assignment {
                         .expect("Cannot be empty.");
                     person.hid = Some(h_sample.hid);
                     let pid = person.pid;
-                    queues.matched.insert(pid);
-                    queues.unmatched.remove(&pid);
+                    self.queues.matched.insert(pid);
+                    self.queues.unmatched.remove(&pid);
                     // TODO: handle assignment to household? Not included in python.
                 }
             }
@@ -943,9 +938,6 @@ impl Assignment {
 
     // TODO: add type for LAD
     pub fn run(&mut self) -> anyhow::Result<()> {
-        // Create queues
-        let mut queues = Queues::new(&self.p_data, &mut self.rng);
-
         // Deterministic ordering
         let msoas: BTreeSet<MSOA> = self
             .p_data
@@ -1029,7 +1021,7 @@ impl Assignment {
             self.info_stats();
 
             info!(">>> Assigning surplus children");
-            self.assign_surplus_children(msoa, &oas, &mut queues)?;
+            self.assign_surplus_children(msoa, &oas)?;
             self.info_stats();
         }
 
