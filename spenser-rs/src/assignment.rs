@@ -88,7 +88,9 @@ fn _replace_i32(mapping: &HashMap<i32, i32>) -> impl (Fn(&Series) -> Series) + '
     }
 }
 
-fn read_csv<P: AsRef<Path>, K, V: for<'a> Deserialize<'a>>(path: P) -> anyhow::Result<TiVec<K, V>> {
+pub fn read_csv<P: AsRef<Path>, K, V: for<'a> Deserialize<'a>>(
+    path: P,
+) -> anyhow::Result<TiVec<K, V>> {
     Ok(csv::Reader::from_path(path)?
         .deserialize()
         .collect::<Result<TiVec<K, V>, _>>()?)
@@ -574,7 +576,11 @@ impl Assignment {
                     .hid = Some(household.hid);
                 // # mark households as filled if appropriate
                 // TODO: fix integer handling
-                if mark_filled && household.lc4404_c_sizhuk11 == nocc {
+                if mark_filled
+                    && household.lc4404_c_sizhuk11 == nocc
+                    // TODO: not required since subsetted above?
+                    && household.lc4408_c_ahthuk11 == 5
+                {
                     household.filled = Some(true);
                 }
                 debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
@@ -809,6 +815,13 @@ impl Assignment {
             self.h_data
                 .iter()
                 .filter(|household| household.lc4408_c_ahthuk11 > 0)
+                .count()
+        );
+        info!(
+            "Communal residences not filled: {}",
+            self.h_data
+                .iter()
+                .filter(|household| household.communal_size.ge(&0) && household.filled.is_none())
                 .count()
         );
         info!("Single-occupant households not filled: {}",
