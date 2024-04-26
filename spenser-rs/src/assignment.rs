@@ -649,6 +649,8 @@ impl Assignment {
                         self.queues.unmatched.insert(pid);
                         self.queues.matched.remove(&pid);
                     }
+                    // Continue as could not fill
+                    continue;
                 }
 
                 while let Some(pid) = pids.pop() {
@@ -957,6 +959,7 @@ impl Assignment {
             .collect();
 
         // Run assignment over each MSOA
+        // TODO: add random permutation over MSOAs
         for msoa in msoas.iter() {
             let oas = self
                 .geog_lookup
