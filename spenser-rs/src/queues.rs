@@ -25,6 +25,27 @@ fn update_pid_vec(
     None
 }
 
+fn get_closest_pid(
+    age: Age,
+    p_data: &TiVec<PID, Person>,
+    v: &mut Vec<PID>,
+    matched: &mut HashSet<PID>,
+    unmatched: &mut HashSet<PID>,
+) -> Option<PID> {
+    // Retain only unmatched PIDs
+    v.retain(|pid| !matched.contains(pid));
+
+    // Get closest in age from v for given age
+    if let Some((idx, pid)) = get_closest_idx_and_pid(age, v, p_data) {
+        v.remove(idx);
+        unmatched.remove(&pid);
+        matched.insert(pid.to_owned());
+        Some(pid)
+    } else {
+        None
+    }
+}
+
 #[derive(Debug)]
 pub struct Queues {
     pub unmatched: HashSet<PID>,
@@ -45,7 +66,11 @@ pub enum AdultOrChild {
     Child,
 }
 
-fn get_closest(age: Age, v: &[PID], p_data: &TiVec<PID, Person>) -> Option<(usize, PID)> {
+fn get_closest_idx_and_pid(
+    age: Age,
+    v: &[PID],
+    p_data: &TiVec<PID, Person>,
+) -> Option<(usize, PID)> {
     // Custom algorithm to get PID with smallest difference in age
     if !v.is_empty() {
         // TODO: possibly improve this as O(N)
@@ -163,6 +188,9 @@ impl Queues {
         });
 
         // Shuffle queues
+        // Note: since the samples are derived from closest absolute age, shuffling should only
+        // have a minor effect on the assignments. However, for a different assignment process
+        // this could make a substantial difference as the initial p_data is not in a random order.
         people_by_area_ase.shuffle(rng);
         adults_by_area_se.shuffle(rng);
         adults_by_area_s.shuffle(rng);
@@ -235,26 +263,20 @@ impl Queues {
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            let pid = update_pid_vec(v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
             return_some!(pid);
         }
         if let Some(v) = self.adults_by_area_se.get_mut(&(msoa.to_owned(), sex, eth)) {
-            let pid = update_pid_vec(v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
             return_some!(pid);
         }
         if let Some(v) = self.adults_by_area_s.get_mut(&(msoa.to_owned(), sex)) {
-            let pid = update_pid_vec(v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
             return_some!(pid);
         }
         if let Some(v) = self.adults_by_area.get_mut(&msoa.to_owned()) {
-            // Retain only unmatched PIDs
-            v.retain(|pid| !self.matched.contains(pid));
-            if let Some((idx, pid)) = get_closest(age, v, p_data) {
-                v.remove(idx);
-                self.unmatched.remove(&pid);
-                self.matched.insert(pid.to_owned());
-                return Some(pid);
-            }
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            return_some!(pid);
         }
         None
     }
@@ -266,33 +288,68 @@ impl Queues {
         age: Age,
         sex: Sex,
         eth: Eth,
-        // TODO: add condition on if single-parent or couple
         p_data: &TiVec<PID, Person>,
     ) -> Option<PID> {
+        // TODO: check the below conditions match the ones in python
         if let Some(v) = self
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            let pid = update_pid_vec(v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
             return_some!(pid);
         }
         if let Some(v) = self
             .children_by_area_se
             .get_mut(&(msoa.to_owned(), sex, eth))
         {
-            let pid = update_pid_vec(v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
             return_some!(pid);
         }
         if let Some(v) = self.children_by_area_s.get_mut(&(msoa.to_owned(), sex)) {
-            // Retain only unmatched PIDs
-            v.retain(|pid| !self.matched.contains(pid));
-            if let Some((idx, pid)) = get_closest(age, v, p_data) {
-                v.remove(idx);
-                self.unmatched.remove(&pid);
-                self.matched.insert(pid.to_owned());
-                return Some(pid);
-            }
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            return_some!(pid);
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rand::{rngs::StdRng, seq::IteratorRandom, SeedableRng};
+    use typed_index_collections::TiVec;
+
+    use crate::{
+        assignment::read_csv,
+        person::{Person, PID},
+        Age,
+    };
+
+    use super::get_closest_idx_and_pid;
+
+    #[test]
+    fn test_get_closest_idx_and_pid() {
+        // Load test people
+        let p_data: TiVec<PID, Person> =
+            read_csv("tests/data/ssm_E09000001_MSOA11_ppp_2020.csv").unwrap();
+        let mut rng = StdRng::seed_from_u64(1);
+        // Draw random sample
+        let v = p_data
+            .iter()
+            .map(|person| person.pid)
+            .choose_multiple(&mut rng, 10);
+        v.iter().for_each(|idx| {
+            let person = p_data.get(*idx).unwrap();
+            println!("{:?}", person);
+        });
+        // Get closest to age = 78
+        let age = Age(78);
+        if let Some((idx, pid)) = get_closest_idx_and_pid(age, &v, &p_data) {
+            println!("PID: {}", pid);
+            println!("Person: {:?}", p_data.get(pid).unwrap());
+            assert_eq!(idx, 6);
+            assert_eq!(pid, PID(8506));
+        } else {
+            panic!()
+        }
     }
 }
