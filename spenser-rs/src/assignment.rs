@@ -7,7 +7,7 @@ use std::{
 use anyhow::anyhow;
 use csv::Writer;
 use hashbrown::HashSet;
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use polars::prelude::*;
 use rand::distributions::{Distribution, WeightedIndex};
 use rand::seq::SliceRandom;
