@@ -82,8 +82,20 @@ impl std::fmt::Display for Sex {
     }
 }
 
-#[derive(Hash, Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Age(pub usize);
+
+impl Ord for Age {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+impl PartialOrd for Age {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 impl std::fmt::Display for Age {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
