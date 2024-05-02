@@ -149,21 +149,14 @@ enum Parent {
 
 impl Assignment {
     pub fn new(region: &str, rng_seed: u64, config: &Config) -> anyhow::Result<Assignment> {
-        let h_file = config
-            .data_dir
-            .join(format!(
-                "ssm_hh_{}_{}_{}.csv",
-                region, config.household_resolution, config.year
-            ))
-            .to_path_buf();
-
-        let p_file = config
-            .data_dir
-            .join(format!(
-                "ssm_{}_{}_{}_{}.csv",
-                region, config.person_resolution, config.projection, config.year
-            ))
-            .to_path_buf();
+        let h_file = config.data_dir.join(format!(
+            "ssm_hh_{}_{}_{}.csv",
+            region, config.household_resolution, config.year
+        ));
+        let p_file = config.data_dir.join(format!(
+            "ssm_{}_{}_{}_{}.csv",
+            region, config.person_resolution, config.projection, config.year
+        ));
 
         let geog_lookup = read_geog_lookup(&format!("{PERSISTENT_DATA}/gb_geog_lookup.csv.gz"))?;
         let mut hrp_dist: BTreeMap<String, TiVec<HRPID, HRPerson>> = BTreeMap::new();
@@ -235,8 +228,15 @@ impl Assignment {
                 .collect::<HashMap<Eth, Eth>>();
             p_data = map_eth(p_data, &eth_mapping)?;
             p_data = map_eth(p_data, &eth_remapping)?;
+            // TODO: check should there be a h_data mapping call here first?
             h_data = map_eth(h_data, &eth_remapping)?;
         }
+
+        // Assert eth mapping performed correctly
+        p_data
+            .iter()
+            .for_each(|person| assert!((1..=8).contains(&person.eth.0)));
+
         let mut rng = StdRng::seed_from_u64(rng_seed);
         let queues = Queues::new(&p_data, &mut rng);
         Ok(Self {
@@ -275,30 +275,43 @@ impl Assignment {
                 })
                 .collect();
 
+            if h_ref.is_empty() {
+                continue;
+            }
+
             // Get sample of HRPs
-            let sample = (0..h_ref.len()).fold(Vec::new(), |mut acc, _| {
-                let hrpid = HRPID(weighted_idx.sample(&mut self.rng));
-                let el = hrp_dist.get(hrpid).unwrap();
-                acc.push((hrpid.to_owned(), el));
-                acc
-            });
+            let sample = (0..h_ref.len())
+                .map(|_| {
+                    let hrpid = HRPID(weighted_idx.sample(&mut self.rng));
+                    hrp_dist.get(hrpid).unwrap()
+                })
+                .collect::<Vec<_>>();
 
             // Loop over sample HRPs and match PIDs
-            for ((_, sample_person), household) in sample.iter().zip(h_ref) {
+            for (sample_person, household) in sample.iter().zip(h_ref) {
                 // Demographics
                 let age = sample_person.age;
                 let sex = sample_person.sex;
                 let eth = sample_person.eth;
 
+                // Note: Currently possible for the HRP to be a child (as in python, should it be
+                // impossible?), but different sampling is implemented in python where
+                // `get_closest_adult()` is called for all cases:
+                // https://github.com/alan-turing-institute/microsimulation/blob/2373691bd0ff764db129e52ec78d71c58538d9af/microsimulation/assignment.py#L226
+                // TODO: consider fix in `sample_person` below to match python version.
+                // It will have negligible effect as rare event that HRP is child.
+                let adult_or_child = if age > ADULT_AGE {
+                    AdultOrChild::Adult
+                } else {
+                    warn!("HRP is child");
+                    AdultOrChild::Child
+                };
+
                 // Try exact match over unmatched
-                if let Some(pid) = self.queues.sample_person(
-                    msoa,
-                    age,
-                    sex,
-                    eth,
-                    AdultOrChild::Adult,
-                    &self.p_data,
-                ) {
+                if let Some(pid) =
+                    self.queues
+                        .sample_person(msoa, age, sex, eth, adult_or_child, &self.p_data)
+                {
                     // Assign pid to household
                     household.hrpid = Some(pid);
                     // Assign household to person
@@ -392,7 +405,7 @@ impl Assignment {
                 hrp_sex.opposite()
             };
 
-            // TODO: check is "ethnicityew"
+            // TODO: check why this is `.ethnicityew` and not `.eth`
             let eth: Eth = partner_sample.ethnicityew.into();
 
             // Sample a HR person
@@ -400,8 +413,6 @@ impl Assignment {
                 self.queues
                     .sample_person(msoa, age, sex, eth, AdultOrChild::Adult, &self.p_data)
             {
-                // Assign pid to household
-                household.hrpid = Some(pid);
                 // Assign household to person
                 self.p_data
                     .get_mut(pid)
@@ -522,7 +533,11 @@ impl Assignment {
                 .ok_or(anyhow!("Invalid HRPID: {child_sample_id}"))?;
             let age = child_sample.age;
             let sex = child_sample.sex;
-            let eth = child_sample.eth;
+
+            // TODO: check handling see L392 of assignment.py:
+            // https://github.com/alan-turing-institute/microsimulation/blob/2373691bd0ff764db129e52ec78d71c58538d9af/microsimulation/assignment.py#L392
+            // i.e. why is this `.ethnicityew` and not `.eth`
+            let eth: Eth = child_sample.ethnicityew.into();
 
             // Get match from population
             if let Some(pid) =
@@ -730,7 +745,7 @@ impl Assignment {
                         && household.filled != Some(true)
                 })
                 .collect();
-            if !h_candidates.is_empty() {
+            if !h_candidates.is_empty() && c_unassigned.len().gt(&0) {
                 for person in c_unassigned {
                     let h_sample = h_candidates
                         .choose(&mut self.rng)
