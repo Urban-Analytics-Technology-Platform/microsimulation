@@ -36,13 +36,6 @@ fn _input() {
     std::io::stdin().read_exact(&mut [0]).unwrap();
 }
 
-pub fn debug_stats(pid: PID, total_matched: usize, total_unmatched: usize) {
-    debug!(
-        "Assigned person: {pid:10}, matched: {:6}, unmatched: {:6}",
-        total_matched, total_unmatched
-    );
-}
-
 #[derive(Debug)]
 pub struct Assignment {
     pub region: String,
@@ -324,7 +317,7 @@ impl Assignment {
                     if household.lc4408_c_ahthuk11 == 1 {
                         household.filled = Some(true)
                     }
-                    debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
+                    self.queues.debug_stats(pid);
                 } else {
                     return Err(anyhow!("No match for: {sample_person:?}").context("sample_hrp()"));
                 }
@@ -423,7 +416,7 @@ impl Assignment {
                 if household.lc4404_c_sizhuk11 == 2 {
                     household.filled = Some(true)
                 }
-                debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
+                self.queues.debug_stats(pid);
             } else {
                 // TODO consider returning error variant instead of logging
                 error!("No partner match!");
@@ -551,7 +544,7 @@ impl Assignment {
                 if mark_filled {
                     household.filled = Some(true)
                 }
-                debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
+                self.queues.debug_stats(pid);
             } else {
                 warn!(
                     "child not found,  age: {}, sex: {:?}, eth: {:?}",
@@ -598,7 +591,7 @@ impl Assignment {
                 {
                     household.filled = Some(true);
                 }
-                debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
+                self.queues.debug_stats(pid);
             } else {
                 warn!(
                     "Out of multi-people, need {} households for {}",
@@ -660,8 +653,7 @@ impl Assignment {
                             .expect("MSOA does not exist in lookup")
                             .push(pid);
 
-                        // Add PID back to unmatched queue and remove from matched
-                        self.queues.unmatched.insert(pid);
+                        // Remove PID from matched set
                         self.queues.matched.remove(&pid);
                     }
                     // Continue as could not fill
@@ -673,7 +665,7 @@ impl Assignment {
                         .get_mut(pid)
                         .unwrap_or_else(|| panic!("Invalid {pid}"))
                         .hid = Some(household.hid);
-                    debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
+                    self.queues.debug_stats(pid);
                 }
             }
             household.filled = Some(true);
@@ -710,8 +702,7 @@ impl Assignment {
                 person.hid = Some(h_sample.hid);
                 let pid = person.pid;
                 self.queues.matched.insert(pid);
-                self.queues.unmatched.remove(&pid);
-                debug_stats(pid, self.queues.matched.len(), self.queues.unmatched.len());
+                self.queues.debug_stats(pid);
             }
         }
         Ok(())
@@ -753,7 +744,6 @@ impl Assignment {
                     person.hid = Some(h_sample.hid);
                     let pid = person.pid;
                     self.queues.matched.insert(pid);
-                    self.queues.unmatched.remove(&pid);
                 }
             }
         }

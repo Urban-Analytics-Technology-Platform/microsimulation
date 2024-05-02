@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use hashbrown::HashSet;
+use log::debug;
 use rand::{rngs::StdRng, seq::SliceRandom};
 use typed_index_collections::TiVec;
 
@@ -9,16 +10,11 @@ use crate::{
     return_some, Age, Eth, Sex, ADULT_AGE, MSOA,
 };
 
-fn update_pid_vec(
-    v: &mut Vec<PID>,
-    matched: &mut HashSet<PID>,
-    unmatched: &mut HashSet<PID>,
-) -> Option<PID> {
+fn update_pid_vec(v: &mut Vec<PID>, matched: &mut HashSet<PID>) -> Option<PID> {
     while let Some(el) = v.pop() {
         if matched.contains(&el) {
             continue;
         }
-        unmatched.remove(&el);
         matched.insert(el.to_owned());
         return Some(el);
     }
@@ -30,7 +26,6 @@ fn get_closest_pid(
     p_data: &TiVec<PID, Person>,
     v: &mut Vec<PID>,
     matched: &mut HashSet<PID>,
-    unmatched: &mut HashSet<PID>,
 ) -> Option<PID> {
     // Retain only unmatched PIDs
     v.retain(|pid| !matched.contains(pid));
@@ -38,7 +33,6 @@ fn get_closest_pid(
     // Get closest in age from v for given age
     if let Some((idx, pid)) = get_closest_idx_and_pid(age, v, p_data) {
         v.remove(idx);
-        unmatched.remove(&pid);
         matched.insert(pid.to_owned());
         Some(pid)
     } else {
@@ -48,7 +42,6 @@ fn get_closest_pid(
 
 #[derive(Debug)]
 pub struct Queues {
-    pub unmatched: HashSet<PID>,
     pub matched: HashSet<PID>,
     people_by_area_ase: BTreeMap<(MSOA, Age, Sex, Eth), Vec<PID>>,
     adults_by_area_se: BTreeMap<(MSOA, Sex, Eth), Vec<PID>>,
@@ -59,6 +52,7 @@ pub struct Queues {
     pub people_by_area_over_75: BTreeMap<MSOA, Vec<PID>>,
     pub people_by_area_19_to_25: BTreeMap<MSOA, Vec<PID>>,
     pub people_by_area_over_16: BTreeMap<MSOA, Vec<PID>>,
+    total: usize,
 }
 
 pub enum AdultOrChild {
@@ -106,12 +100,7 @@ trait QueueOperations<K: Ord> {
     /// Shuffle a given queue.
     fn shuffle(&mut self, rng: &mut StdRng);
     /// Get an unmatched `pid` given a key and update matched and unmatched sets.
-    fn get_sample(
-        &mut self,
-        key: &K,
-        matched: &mut HashSet<PID>,
-        unmatched: &mut HashSet<PID>,
-    ) -> Option<PID>;
+    fn get_sample(&mut self, key: &K, matched: &mut HashSet<PID>) -> Option<PID>;
 }
 
 impl<K: Ord> QueueOperations<K> for BTreeMap<K, Vec<PID>> {
@@ -128,14 +117,9 @@ impl<K: Ord> QueueOperations<K> for BTreeMap<K, Vec<PID>> {
         self.iter_mut().for_each(|(_, v)| v.shuffle(rng))
     }
     /// Given an MSOA, return a PID if one exists and update matched and unmatched sets.
-    fn get_sample(
-        &mut self,
-        key: &K,
-        matched: &mut HashSet<PID>,
-        unmatched: &mut HashSet<PID>,
-    ) -> Option<PID> {
+    fn get_sample(&mut self, key: &K, matched: &mut HashSet<PID>) -> Option<PID> {
         let v = self.get_mut(key).expect("Invalid MSOA.");
-        update_pid_vec(v, matched, unmatched)
+        update_pid_vec(v, matched)
     }
 }
 
@@ -153,7 +137,6 @@ impl Queues {
     //   to String is to use &str and keep a map of PIDs to update after sampling. This is (~1.5x).
     // ---
     pub fn new(p_data: &TiVec<PID, Person>, rng: &mut StdRng) -> Self {
-        let unmatched = p_data.iter_enumerated().map(|(idx, _)| idx).collect();
         let mut people_by_area_ase: BTreeMap<(MSOA, Age, Sex, Eth), Vec<PID>> = BTreeMap::new();
         let mut adults_by_area_se: BTreeMap<(MSOA, Sex, Eth), Vec<PID>> = BTreeMap::new();
         let mut adults_by_area_s: BTreeMap<(MSOA, Sex), Vec<PID>> = BTreeMap::new();
@@ -212,26 +195,26 @@ impl Queues {
             people_by_area_19_to_25,
             people_by_area_over_16,
             matched: HashSet::new(),
-            unmatched,
+            total: p_data.len(),
         }
     }
 
     pub fn sample_person_over_75(&mut self, msoa: &MSOA) -> Option<PID> {
         self.people_by_area_over_75
-            .get_sample(msoa, &mut self.matched, &mut self.unmatched)
+            .get_sample(msoa, &mut self.matched)
     }
     pub fn sample_person_over_16(&mut self, msoa: &MSOA) -> Option<PID> {
         self.people_by_area_over_16
-            .get_sample(msoa, &mut self.matched, &mut self.unmatched)
+            .get_sample(msoa, &mut self.matched)
     }
     pub fn sample_person_19_to_25(&mut self, msoa: &MSOA) -> Option<PID> {
         self.people_by_area_19_to_25
-            .get_sample(msoa, &mut self.matched, &mut self.unmatched)
+            .get_sample(msoa, &mut self.matched)
     }
 
     pub fn sample_adult_any(&mut self, msoa: &MSOA) -> Option<PID> {
         let v = self.adults_by_area.get_mut(msoa).expect("Invalid MSOA.");
-        update_pid_vec(v, &mut self.matched, &mut self.unmatched)
+        update_pid_vec(v, &mut self.matched)
     }
 
     /// TODO: add doc comment
@@ -263,19 +246,19 @@ impl Queues {
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
             return_some!(pid);
         }
         if let Some(v) = self.adults_by_area_se.get_mut(&(msoa.to_owned(), sex, eth)) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
             return_some!(pid);
         }
         if let Some(v) = self.adults_by_area_s.get_mut(&(msoa.to_owned(), sex)) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
             return_some!(pid);
         }
         if let Some(v) = self.adults_by_area.get_mut(&msoa.to_owned()) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
             return_some!(pid);
         }
         None
@@ -295,21 +278,29 @@ impl Queues {
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
             return_some!(pid);
         }
         if let Some(v) = self
             .children_by_area_se
             .get_mut(&(msoa.to_owned(), sex, eth))
         {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
             return_some!(pid);
         }
         if let Some(v) = self.children_by_area_s.get_mut(&(msoa.to_owned(), sex)) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched, &mut self.unmatched);
+            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
             return_some!(pid);
         }
         None
+    }
+
+    pub fn debug_stats(&self, pid: PID) {
+        debug!(
+            "Assigned person: {pid:10}, matched: {:6}, unmatched: {:6}",
+            self.matched.len(),
+            self.total - self.matched.len()
+        );
     }
 }
 
