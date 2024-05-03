@@ -671,6 +671,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "microsimulation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "csv",
+ "env_logger",
+ "hashbrown",
+ "lazy_static",
+ "log",
+ "polars",
+ "rand",
+ "rayon",
+ "serde",
+ "serde_json",
+ "tracing",
+ "typed-index-collections",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1350,26 +1370,6 @@ dependencies = [
  "autocfg",
  "static_assertions",
  "version_check",
-]
-
-[[package]]
-name = "spenser-rs"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "csv",
- "env_logger",
- "hashbrown",
- "lazy_static",
- "log",
- "polars",
- "rand",
- "rayon",
- "serde",
- "serde_json",
- "tracing",
- "typed-index-collections",
 ]
 
 [[package]]

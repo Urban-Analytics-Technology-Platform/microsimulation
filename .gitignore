@@ -121,6 +121,7 @@ __*
 *.ipynb
 notebooks/
 
-# spenser-rs
+# microsimulation-rs
 target/
 spenser-rs/outputs
+data

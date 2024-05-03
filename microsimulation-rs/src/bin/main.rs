@@ -1,6 +1,6 @@
 use clap::{arg, Command};
 use log::info;
-use spenser_rs::{assignment::Assignment, config::Config};
+use microsimulation::{assignment::Assignment, config::Config};
 
 fn cli() -> Command {
     Command::new("SPENSER")
