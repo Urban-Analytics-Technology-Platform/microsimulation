@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, str::FromStr};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Resolution {
     MSOA11,
     OA11,
@@ -16,7 +16,7 @@ impl std::fmt::Display for Resolution {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Projection {
     #[serde(rename = "ppp")]
     PPP,
@@ -41,7 +41,7 @@ impl std::fmt::Display for Year {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub person_resolution: Resolution,
     pub household_resolution: Resolution,

@@ -16,8 +16,13 @@ macro_rules! return_some {
     };
 }
 pub(crate) use return_some;
+use sha2::{Digest, Sha256};
 
 const ADULT_AGE: Age = Age(16);
+
+fn digest(object: impl Serialize) -> anyhow::Result<String> {
+    Ok(hex::encode(Sha256::digest(bincode::serialize(&object)?)))
+}
 
 #[derive(Hash, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MSOA(String);

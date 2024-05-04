@@ -15,13 +15,13 @@ use rand::{rngs::StdRng, SeedableRng};
 use serde::Deserialize;
 use typed_index_collections::TiVec;
 
-use crate::Eth;
 use crate::{
     config::{Config, Year},
     person::ChildHRPerson,
     queues::AdultOrChild,
     ADULT_AGE, OA,
 };
+use crate::{digest, Eth};
 use crate::{
     household::{Household, HID},
     queues::Queues,
@@ -245,6 +245,11 @@ impl Assignment {
             queues,
             rng,
         })
+    }
+
+    /// Generate digest for people and households.
+    pub fn digest(&self) -> anyhow::Result<String> {
+        digest((&self.p_data, &self.h_data))
     }
 
     fn sample_hrp(&mut self, msoa: &MSOA, oas: &HashSet<OA>) -> anyhow::Result<()> {
@@ -1151,7 +1156,8 @@ mod tests {
 
     #[test]
     fn test_assignment_determinism() -> anyhow::Result<()> {
-        // env_logger::init();
+        // Init env logger
+        let _ = &ENV_LOGGER;
         let mut assignment_0_0 = Assignment::new("E09000001", 0, &TEST_CONFIG)?;
         assignment_0_0.run()?;
         let mut assignment_0_1 = Assignment::new("E09000001", 0, &TEST_CONFIG)?;
@@ -1162,14 +1168,33 @@ mod tests {
         assignment_1_1.run()?;
 
         // Equal seeds used on different runs should generate equal assignments
-        assert_eq!(assignment_0_0.p_data, assignment_0_1.p_data);
-        assert_eq!(assignment_0_0.h_data, assignment_0_1.h_data);
-        assert_eq!(assignment_1_0.p_data, assignment_1_1.p_data);
-        assert_eq!(assignment_1_0.h_data, assignment_1_1.h_data);
+        assert_eq!(assignment_0_0.digest()?, assignment_0_1.digest()?);
+        assert_eq!(assignment_1_0.digest()?, assignment_1_1.digest()?);
 
         // Different seeds used on different runs should generate different assignments
-        assert_ne!(assignment_0_0.p_data, assignment_1_0.p_data);
-        assert_ne!(assignment_0_0.h_data, assignment_1_0.h_data);
+        assert_ne!(assignment_0_0.digest()?, assignment_1_0.digest()?);
+        Ok(())
+    }
+
+    const EXPECTED_DIGEST_0: &str =
+        "8bd375286de609f387535fe21d290faa3e61551a1e30c6352aed13347df60414";
+
+    #[test]
+    #[ignore = "single machine testing: not expected to be valid across platforms as exact digest used"]
+    fn test_assignment_determinism_digest() -> anyhow::Result<()> {
+        // Init env logger
+        let _ = &ENV_LOGGER;
+        let mut assignment_0_0 = Assignment::new(
+            "E06000001",
+            0,
+            &Config {
+                data_dir: PathBuf::from_str("../data/").unwrap(),
+                ..TEST_CONFIG.clone()
+            },
+        )?;
+        assignment_0_0.run()?;
+        assert_eq!(assignment_0_0.digest()?, EXPECTED_DIGEST_0);
+
         Ok(())
     }
 }

@@ -33,5 +33,6 @@ fn main() -> anyhow::Result<()> {
     assignment.run()?;
     assignment.check()?;
     assignment.write(region, &config)?;
+    info!("Digest: {}", assignment.digest()?);
     Ok(())
 }
