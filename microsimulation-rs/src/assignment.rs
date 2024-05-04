@@ -54,7 +54,7 @@ pub struct Assignment {
     pub rng: StdRng,
 }
 
-fn read_geog_lookup(path: &str) -> anyhow::Result<DataFrame> {
+fn read_geog_lookup(path: impl Into<PathBuf>) -> anyhow::Result<DataFrame> {
     let mut df = CsvReader::from_path(path)?.finish()?;
     df.rename("OA", "oa")?
         .rename("MSOA", "msoa")?
@@ -62,9 +62,6 @@ fn read_geog_lookup(path: &str) -> anyhow::Result<DataFrame> {
         .rename("LSOA", "lsoa")?;
     Ok(df)
 }
-
-// TODO: refine paths
-const PERSISTENT_DATA: &str = "persistent_data/";
 
 // See example: https://docs.rs/polars/latest/polars/frame/struct.DataFrame.html#method.apply
 fn _replace_i32(mapping: &HashMap<i32, i32>) -> impl (Fn(&Series) -> Series) + '_ {
@@ -151,23 +148,23 @@ impl Assignment {
             region, config.person_resolution, config.projection, config.year
         ));
 
-        let geog_lookup = read_geog_lookup(&format!("{PERSISTENT_DATA}/gb_geog_lookup.csv.gz"))?;
+        let geog_lookup = read_geog_lookup(config.persistent_data().join("gb_geog_lookup.csv.gz"))?;
         let mut hrp_dist: BTreeMap<String, TiVec<HRPID, HRPerson>> = BTreeMap::new();
         hrp_dist.insert(
             "sgl".to_string(),
-            read_csv(format!("{PERSISTENT_DATA}/hrp_sgl_dist.csv"))?,
+            read_csv(config.persistent_data().join("hrp_sgl_dist.csv"))?,
         );
         hrp_dist.insert(
             "cpl".to_string(),
-            read_csv(format!("{PERSISTENT_DATA}/hrp_cpl_dist.csv"))?,
+            read_csv(config.persistent_data().join("hrp_cpl_dist.csv"))?,
         );
         hrp_dist.insert(
             "sp".to_string(),
-            read_csv(format!("{PERSISTENT_DATA}/hrp_sp_dist.csv"))?,
+            read_csv(config.persistent_data().join("hrp_sp_dist.csv"))?,
         );
         hrp_dist.insert(
             "mix".to_string(),
-            read_csv(format!("{PERSISTENT_DATA}/hrp_dist.csv"))?,
+            read_csv(config.persistent_data().join("hrp_dist.csv"))?,
         );
 
         let mut hrp_index: BTreeMap<String, Vec<i32>> = BTreeMap::new();
@@ -176,8 +173,8 @@ impl Assignment {
         hrp_index.insert("sp".to_string(), vec![4]);
         hrp_index.insert("mix".to_string(), vec![5]);
 
-        let partner_hrp_dist = read_csv(format!("{PERSISTENT_DATA}/partner_hrp_dist.csv"))?;
-        let child_hrp_dist = read_csv(format!("{PERSISTENT_DATA}/child_hrp_dist.csv"))?;
+        let partner_hrp_dist = read_csv(config.persistent_data().join("partner_hrp_dist.csv"))?;
+        let child_hrp_dist = read_csv(config.persistent_data().join("child_hrp_dist.csv"))?;
         let scotland = region.starts_with('S');
         let mut h_data: TiVec<HID, Household> = read_csv(h_file)?;
         let mut p_data: TiVec<PID, Person> = read_csv(p_file)?;
@@ -1090,6 +1087,8 @@ mod tests {
 
     use super::*;
 
+    const PERSISTENT_DATA_DIR: &str = "../persistent_data/";
+
     lazy_static! {
         static ref TEST_CONFIG: Config = Config {
             person_resolution: Resolution::MSOA11,
@@ -1098,6 +1097,7 @@ mod tests {
             strict: false,
             year: Year(2020),
             data_dir: PathBuf::from_str("tests/data/").unwrap(),
+            persistent_data_dir: Some(PathBuf::from_str(PERSISTENT_DATA_DIR).unwrap()),
             profile: false,
         };
         static ref ENV_LOGGER: () = env_logger::init();
@@ -1105,7 +1105,7 @@ mod tests {
 
     #[test]
     fn test_read_geog_lookup() -> anyhow::Result<()> {
-        let df = read_geog_lookup(&format!("{PERSISTENT_DATA}/gb_geog_lookup.csv.gz"))?;
+        let df = read_geog_lookup(format!("{PERSISTENT_DATA_DIR}/gb_geog_lookup.csv.gz"))?;
         println!("{}", df);
         Ok(())
     }

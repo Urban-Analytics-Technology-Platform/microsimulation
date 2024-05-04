@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Resolution {
@@ -49,5 +49,14 @@ pub struct Config {
     pub strict: bool,
     pub year: Year,
     pub data_dir: PathBuf,
+    pub persistent_data_dir: Option<PathBuf>,
     pub profile: bool,
+}
+
+impl Config {
+    pub fn persistent_data(&self) -> PathBuf {
+        self.persistent_data_dir
+            .clone()
+            .unwrap_or(PathBuf::from_str("persistent_data/").unwrap())
+    }
 }

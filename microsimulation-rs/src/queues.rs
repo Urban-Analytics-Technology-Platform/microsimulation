@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, hash::Hash};
 
 use hashbrown::HashSet;
 use log::debug;
@@ -94,7 +94,7 @@ fn get_closest_idx_and_pid(
 }
 
 /// Additional operations useful for maps with queues.
-trait QueueOperations<K: Ord> {
+trait QueueOperations<K: Ord + Hash> {
     /// Add a given `pid` to queue at a given key.
     fn add_pid(&mut self, key: K, pid: PID);
     /// Shuffle a given queue.
@@ -103,7 +103,7 @@ trait QueueOperations<K: Ord> {
     fn get_sample(&mut self, key: &K, matched: &mut HashSet<PID>) -> Option<PID>;
 }
 
-impl<K: Ord> QueueOperations<K> for BTreeMap<K, Vec<PID>> {
+impl<K: Ord + Hash> QueueOperations<K> for BTreeMap<K, Vec<PID>> {
     fn add_pid(&mut self, key: K, pid: PID) {
         {
             self.entry(key)

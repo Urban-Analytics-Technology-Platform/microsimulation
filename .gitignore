@@ -123,5 +123,5 @@ notebooks/
 
 # microsimulation-rs
 target/
-microsimulation-rs/outputs
-microsimulation-rs/data
+outputs/
+data

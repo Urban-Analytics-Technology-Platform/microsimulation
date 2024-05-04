@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "microsimulation-rs"
+]
+resolver = "2"
