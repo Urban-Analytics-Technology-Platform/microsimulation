@@ -324,7 +324,7 @@ impl Assignment {
                     if household.lc4408_c_ahthuk11.eq(&1) {
                         household.filled = Some(true)
                     }
-                    self.queues.debug_stats(pid);
+                    self.queues.debug_stats();
                 } else {
                     return Err(anyhow!("No match for: {sample_person:?}").context("sample_hrp()"));
                 }
@@ -417,7 +417,7 @@ impl Assignment {
                 if household.lc4404_c_sizhuk11 == 2 {
                     household.filled = Some(true)
                 }
-                self.queues.debug_stats(pid);
+                self.queues.debug_stats();
             } else {
                 // TODO consider returning error variant instead of logging
                 error!("No partner match!");
@@ -542,7 +542,7 @@ impl Assignment {
                 if mark_filled {
                     household.filled = Some(true)
                 }
-                self.queues.debug_stats(pid);
+                self.queues.debug_stats();
             } else {
                 warn!(
                     "child not found,  age: {}, sex: {:?}, eth: {:?}",
@@ -574,7 +574,7 @@ impl Assignment {
                 if mark_filled && household.lc4404_c_sizhuk11.eq(&nocc) {
                     household.filled = Some(true);
                 }
-                self.queues.debug_stats(pid);
+                self.queues.debug_stats();
             } else {
                 warn!(
                     "Out of multi-people, need {} households for {}",
@@ -601,7 +601,7 @@ impl Assignment {
                 Ok(mut pids) => {
                     while let Some(pid) = pids.pop() {
                         assign_household!(self.p_data, pid, household.hid);
-                        self.queues.debug_stats(pid);
+                        self.queues.debug_stats();
                     }
                 }
                 Err(QueueError::InsufficientSamples) => {
@@ -644,7 +644,7 @@ impl Assignment {
                 person.hid = Some(h_sample.hid);
                 let pid = person.pid;
                 self.queues.matched.insert(pid);
-                self.queues.debug_stats(pid);
+                self.queues.debug_stats();
             }
         }
         Ok(())

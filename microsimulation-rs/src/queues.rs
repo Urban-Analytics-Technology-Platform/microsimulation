@@ -363,9 +363,9 @@ impl Queues {
         None
     }
 
-    pub fn debug_stats(&self, pid: PID) {
+    pub fn debug_stats(&self) {
         debug!(
-            "Assigned person: {pid:10}, matched: {:6}, unmatched: {:6}",
+            "Matched: {:6}, unmatched: {:6}",
             self.matched.len(),
             self.total - self.matched.len()
         );
