@@ -7,7 +7,7 @@ use typed_index_collections::TiVec;
 
 use crate::{
     person::{Person, PID},
-    return_some, Age, Eth, Sex, ADULT_AGE, MSOA,
+    Age, Eth, Sex, ADULT_AGE, MSOA,
 };
 
 fn update_pid_vec(v: &mut Vec<PID>, matched: &mut HashSet<PID>) -> Option<PID> {
@@ -246,20 +246,24 @@ impl Queues {
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
-            return_some!(pid);
+            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+                return Some(pid);
+            }
         }
         if let Some(v) = self.adults_by_area_se.get_mut(&(msoa.to_owned(), sex, eth)) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
-            return_some!(pid);
+            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+                return Some(pid);
+            }
         }
         if let Some(v) = self.adults_by_area_s.get_mut(&(msoa.to_owned(), sex)) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
-            return_some!(pid);
+            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+                return Some(pid);
+            }
         }
         if let Some(v) = self.adults_by_area.get_mut(&msoa.to_owned()) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
-            return_some!(pid);
+            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+                return Some(pid);
+            }
         }
         None
     }
@@ -278,19 +282,22 @@ impl Queues {
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
-            return_some!(pid);
+            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+                return Some(pid);
+            }
         }
         if let Some(v) = self
             .children_by_area_se
             .get_mut(&(msoa.to_owned(), sex, eth))
         {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
-            return_some!(pid);
+            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+                return Some(pid);
+            }
         }
         if let Some(v) = self.children_by_area_s.get_mut(&(msoa.to_owned(), sex)) {
-            let pid = get_closest_pid(age, p_data, v, &mut self.matched);
-            return_some!(pid);
+            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+                return Some(pid);
+            }
         }
         None
     }

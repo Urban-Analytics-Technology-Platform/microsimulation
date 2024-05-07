@@ -137,6 +137,16 @@ enum Parent {
     Couple,
 }
 
+/// Assign a given household (HID) to a given person (PID).
+macro_rules! assign_household {
+    ($p_data: expr, $pid: ident, $hid: expr) => {
+        $p_data
+            .get_mut($pid)
+            .ok_or(anyhow!("Invalid {}", $pid))?
+            .hid = Some($hid);
+    };
+}
+
 impl Assignment {
     pub fn new(region: &str, rng_seed: u64, config: &Config) -> anyhow::Result<Assignment> {
         let h_file = config.data_dir.join(format!(
@@ -307,16 +317,11 @@ impl Assignment {
                     self.queues
                         .sample_person(msoa, age, sex, eth, adult_or_child, &self.p_data)
                 {
-                    // Assign pid to household
+                    // Assign pid to household and hid to person
                     household.hrpid = Some(pid);
-                    // Assign household to person
-                    self.p_data
-                        .get_mut(pid)
-                        .unwrap_or_else(|| panic!("Invalid {pid}"))
-                        .hid = Some(household.hid);
-
+                    assign_household!(self.p_data, pid, household.hid);
                     // If single person household, filled
-                    if household.lc4408_c_ahthuk11 == 1 {
+                    if household.lc4408_c_ahthuk11.eq(&1) {
                         household.filled = Some(true)
                     }
                     self.queues.debug_stats(pid);
@@ -369,20 +374,17 @@ impl Assignment {
         for household in h2_ref {
             let hrpid = household.hrpid.expect("Household is not assigned a PID");
             let hrp = self.p_data.get(hrpid).expect("Invalid HRPID");
-            let hrp_sex = hrp.sex;
-            let hrp_age = hrp.age;
-            let hrp_eth = hrp.eth;
 
             // Pick dist
-            let dist = dist_by_ae.get(&(hrp_age, hrp_eth)).unwrap_or_else(|| {
+            let dist = dist_by_ae.get(&(hrp.age, hrp.eth)).unwrap_or_else(|| {
                 warn!(
                     "Partner-HRP not sampled: {}, {}, {} - resample withouth eth",
-                    hrp_age, hrp_sex, hrp_eth
+                    hrp.age, hrp.sex, hrp.eth
                 );
-                dist_by_a.get(&hrp_age).unwrap_or_else(|| {
+                dist_by_a.get(&hrp.age).unwrap_or_else(|| {
                     warn!(
                         "Partner-HRP not sampled: {}, {}, {}",
-                        hrp_age, hrp_sex, hrp_eth
+                        hrp.age, hrp.sex, hrp.eth
                     );
                     &dist
                 })
@@ -395,9 +397,9 @@ impl Assignment {
                 .ok_or(anyhow!("Invalid HRPID: {partner_sample_id}"))?;
             let age = partner_sample.age;
             let sex = if partner_sample.samesex {
-                hrp_sex
+                hrp.sex
             } else {
-                hrp_sex.opposite()
+                hrp.sex.opposite()
             };
 
             // TODO: check why this is `.ethnicityew` and not `.eth`
@@ -409,10 +411,7 @@ impl Assignment {
                     .sample_person(msoa, age, sex, eth, AdultOrChild::Adult, &self.p_data)
             {
                 // Assign household to person
-                self.p_data
-                    .get_mut(pid)
-                    .unwrap_or_else(|| panic!("Invalid {pid}"))
-                    .hid = Some(household.hid);
+                assign_household!(self.p_data, pid, household.hid);
 
                 // If single person household, filled
                 if household.lc4404_c_sizhuk11 == 2 {
@@ -539,10 +538,7 @@ impl Assignment {
                 self.queues
                     .sample_person(msoa, age, sex, eth, AdultOrChild::Child, &self.p_data)
             {
-                self.p_data
-                    .get_mut(pid)
-                    .unwrap_or_else(|| panic!("Invalid {pid}"))
-                    .hid = Some(household.hid);
+                assign_household!(self.p_data, pid, household.hid);
                 if mark_filled {
                     household.filled = Some(true)
                 }
@@ -568,22 +564,12 @@ impl Assignment {
         let mut h_ref: Vec<_> = self
             .h_data
             .iter_mut()
-            .filter(|household| {
-                // TODO: check condition as for other sample
-                oas.contains(&household.oa)
-                    && household.lc4408_c_ahthuk11.eq(&5)
-                    && household.filled != Some(true)
-            })
+            .filter(|hh| oas.contains(&hh.oa) && hh.lc4408_c_ahthuk11.eq(&5) && hh.filled.is_none())
             .collect();
 
         for (idx, household) in h_ref.iter_mut().enumerate() {
-            let pid = self.queues.sample_adult_any(msoa);
-            // TODO: create method for assignment part
-            if let Some(pid) = pid {
-                self.p_data
-                    .get_mut(pid)
-                    .unwrap_or_else(|| panic!("Invalid {pid}"))
-                    .hid = Some(household.hid);
+            if let Some(pid) = self.queues.sample_adult_any(msoa) {
+                assign_household!(self.p_data, pid, household.hid);
                 // Mark households as filled if size is equal to given arguments
                 if mark_filled && household.lc4404_c_sizhuk11.eq(&nocc) {
                     household.filled = Some(true);
@@ -605,11 +591,7 @@ impl Assignment {
         let mut c_ref: Vec<_> = self
             .h_data
             .iter_mut()
-            .filter(|household| {
-                oas.contains(&household.oa) && household.qs420_cell > -1
-                // TODO: check this condition
-                // && household.filled != Some(true)
-            })
+            .filter(|hh| oas.contains(&hh.oa) && hh.qs420_cell.gt(&-1) && hh.filled.is_none())
             .collect();
 
         for household in c_ref.iter_mut() {
@@ -658,10 +640,7 @@ impl Assignment {
                 }
 
                 while let Some(pid) = pids.pop() {
-                    self.p_data
-                        .get_mut(pid)
-                        .unwrap_or_else(|| panic!("Invalid {pid}"))
-                        .hid = Some(household.hid);
+                    assign_household!(self.p_data, pid, household.hid);
                     self.queues.debug_stats(pid);
                 }
             }
@@ -685,11 +664,7 @@ impl Assignment {
         let h_candidates: Vec<_> = self
             .h_data
             .iter_mut()
-            .filter(|household| {
-                oas.contains(&household.oa)
-                    && household.lc4408_c_ahthuk11.eq(&5)
-                    && household.filled != Some(true)
-            })
+            .filter(|hh| oas.contains(&hh.oa) && hh.lc4408_c_ahthuk11.eq(&5) && hh.filled.is_none())
             .collect();
         if !h_candidates.is_empty() {
             for person in p_unassigned {
@@ -739,8 +714,7 @@ impl Assignment {
                         .choose(&mut self.rng)
                         .expect("Cannot be empty.");
                     person.hid = Some(h_sample.hid);
-                    let pid = person.pid;
-                    self.queues.matched.insert(pid);
+                    self.queues.matched.insert(person.pid);
                 }
             }
         }

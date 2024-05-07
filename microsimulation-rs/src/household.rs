@@ -40,6 +40,7 @@ where
     serializer.serialize_str(&s)
 }
 
+// TODO: refactor field names to generic ones
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct Household {
     #[serde(rename = "HID")]

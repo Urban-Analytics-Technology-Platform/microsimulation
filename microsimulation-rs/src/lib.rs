@@ -8,14 +8,6 @@ pub mod household;
 pub mod person;
 pub(crate) mod queues;
 
-macro_rules! return_some {
-    ($arg:expr) => {
-        if $arg.is_some() {
-            return $arg;
-        }
-    };
-}
-pub(crate) use return_some;
 use sha2::{Digest, Sha256};
 
 const ADULT_AGE: Age = Age(16);
