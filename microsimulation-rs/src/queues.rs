@@ -3,12 +3,23 @@ use std::{collections::BTreeMap, hash::Hash};
 use hashbrown::HashSet;
 use log::debug;
 use rand::{rngs::StdRng, seq::SliceRandom};
+use thiserror::Error;
 use typed_index_collections::TiVec;
 
 use crate::{
     person::{Person, PID},
     Age, Eth, Sex, ADULT_AGE, MSOA,
 };
+
+#[derive(Error, Debug)]
+pub enum QueueError {
+    #[error("Insufficient number of people to fill communal household.")]
+    InsufficientSamples,
+    #[error("{0} does not exist in MSOA lookup")]
+    InvalidMSOA(MSOA),
+    #[error("Number of occupants is not greater than 0: {0}")]
+    UnoccupiedHousehold(i32),
+}
 
 fn update_pid_vec(v: &mut Vec<PID>, matched: &mut HashSet<PID>) -> Option<PID> {
     while let Some(el) = v.pop() {
@@ -215,6 +226,56 @@ impl Queues {
     pub fn sample_adult_any(&mut self, msoa: &MSOA) -> Option<PID> {
         let v = self.adults_by_area.get_mut(msoa).expect("Invalid MSOA.");
         update_pid_vec(v, &mut self.matched)
+    }
+
+    pub fn sample_communal(
+        &mut self,
+        msoa: &MSOA,
+        ctype: i32,
+        nocc: i32,
+    ) -> Result<Vec<PID>, QueueError> {
+        if nocc > 0 {
+            let mut pids = vec![];
+            while pids.len() < nocc.try_into().expect("nocc is i32 greater than 0.") {
+                let pid = if ctype < 22 {
+                    self.sample_person_over_75(msoa)
+                } else if ctype < 27 {
+                    self.sample_person_19_to_25(msoa)
+                } else {
+                    self.sample_person_over_16(msoa)
+                };
+                if let Some(pid) = pid {
+                    pids.push(pid);
+                } else {
+                    break;
+                }
+            }
+            if i32::try_from(pids.len())
+                .expect("usize number of samples can cast be i32.")
+                .lt(&nocc)
+            {
+                // Put PIDs back
+                while let Some(pid) = pids.pop() {
+                    let map = if ctype < 22 {
+                        &mut self.people_by_area_over_75
+                    } else if ctype < 27 {
+                        &mut self.people_by_area_19_to_25
+                    } else {
+                        &mut self.people_by_area_over_16
+                    };
+                    map.get_mut(msoa)
+                        .ok_or(QueueError::InvalidMSOA(msoa.clone()))?
+                        .push(pid);
+
+                    // Remove PID from matched set
+                    self.matched.remove(&pid);
+                }
+                return Err(QueueError::InsufficientSamples);
+            }
+            Ok(pids)
+        } else {
+            Err(QueueError::UnoccupiedHousehold(nocc))
+        }
     }
 
     /// TODO: add doc comment

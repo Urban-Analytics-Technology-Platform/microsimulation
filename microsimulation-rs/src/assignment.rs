@@ -18,7 +18,7 @@ use typed_index_collections::TiVec;
 use crate::{
     config::{Config, Year},
     person::ChildHRPerson,
-    queues::AdultOrChild,
+    queues::{AdultOrChild, QueueError},
     ADULT_AGE, OA,
 };
 use crate::{digest, Eth};
@@ -596,58 +596,28 @@ impl Assignment {
 
         for household in c_ref.iter_mut() {
             let ctype = household.qs420_cell;
-
             let nocc = household.communal_size;
-            if nocc > 0 {
-                // TODO: refactor into method on queues
-                // Get samples of nocc size
-                let mut pids = vec![];
-                while i32::try_from(pids.len()).expect("Not i32") < nocc {
-                    let pid = if ctype < 22 {
-                        self.queues.sample_person_over_75(msoa)
-                    } else if ctype < 27 {
-                        self.queues.sample_person_19_to_25(msoa)
-                    } else {
-                        self.queues.sample_person_over_16(msoa)
-                    };
-                    if let Some(pid) = pid {
-                        pids.push(pid);
-                    } else {
-                        break;
+            match self.queues.sample_communal(msoa, ctype, nocc) {
+                Ok(mut pids) => {
+                    while let Some(pid) = pids.pop() {
+                        assign_household!(self.p_data, pid, household.hid);
+                        self.queues.debug_stats(pid);
                     }
                 }
-                if i32::try_from(pids.len()).expect("Not i32").lt(&nocc) {
+                Err(QueueError::InsufficientSamples) => {
                     warn!("cannot assign to communal: {:?}", household);
-                    // Put PIDs back
-                    // TODO: refactor into method on queues
-                    while let Some(pid) = pids.pop() {
-                        let map = if ctype < 22 {
-                            &mut self.queues.people_by_area_over_75
-                        } else if ctype < 27 {
-                            &mut self.queues.people_by_area_19_to_25
-                        } else {
-                            &mut self.queues.people_by_area_over_16
-                        };
-                        map.get_mut(msoa)
-                            .expect("MSOA does not exist in lookup")
-                            .push(pid);
-
-                        // Remove PID from matched set
-                        self.queues.matched.remove(&pid);
-                    }
-                    // Continue as could not fill
                     continue;
                 }
-
-                while let Some(pid) = pids.pop() {
-                    assign_household!(self.p_data, pid, household.hid);
-                    self.queues.debug_stats(pid);
+                Err(QueueError::InvalidMSOA(s)) => {
+                    { Err(anyhow!(QueueError::InvalidMSOA(s).to_string())) }?
                 }
+                Err(QueueError::UnoccupiedHousehold(_)) => {}
             }
             household.filled = Some(true);
         }
         Ok(())
     }
+
     fn assign_surplus_adults(&mut self, msoa: &MSOA, oas: &HashSet<OA>) -> anyhow::Result<()> {
         let p_unassigned: Vec<&mut Person> = self
             .p_data
