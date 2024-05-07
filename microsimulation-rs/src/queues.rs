@@ -60,9 +60,9 @@ pub struct Queues {
     adults_by_area: BTreeMap<MSOA, Vec<PID>>,
     children_by_area_se: BTreeMap<(MSOA, Sex, Eth), Vec<PID>>,
     children_by_area_s: BTreeMap<(MSOA, Sex), Vec<PID>>,
-    pub people_by_area_over_75: BTreeMap<MSOA, Vec<PID>>,
-    pub people_by_area_19_to_25: BTreeMap<MSOA, Vec<PID>>,
-    pub people_by_area_over_16: BTreeMap<MSOA, Vec<PID>>,
+    people_by_area_over_75: BTreeMap<MSOA, Vec<PID>>,
+    people_by_area_19_to_25: BTreeMap<MSOA, Vec<PID>>,
+    people_by_area_over_16: BTreeMap<MSOA, Vec<PID>>,
     total: usize,
 }
 
