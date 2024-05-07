@@ -584,13 +584,8 @@ impl Assignment {
                     .get_mut(pid)
                     .unwrap_or_else(|| panic!("Invalid {pid}"))
                     .hid = Some(household.hid);
-                // # mark households as filled if appropriate
-                // TODO: fix integer handling
-                if mark_filled
-                    && household.lc4404_c_sizhuk11 == nocc
-                    // TODO: not required since subsetted above?
-                    && household.lc4408_c_ahthuk11 == 5
-                {
+                // Mark households as filled if size is equal to given arguments
+                if mark_filled && household.lc4404_c_sizhuk11.eq(&nocc) {
                     household.filled = Some(true);
                 }
                 self.queues.debug_stats(pid);
