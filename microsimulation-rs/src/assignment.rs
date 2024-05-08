@@ -1,12 +1,12 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     io::Read,
     path::{Path, PathBuf},
 };
 
 use anyhow::anyhow;
 use csv::Writer;
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use log::{error, info, warn};
 use polars::prelude::*;
 use rand::distributions::{Distribution, WeightedIndex};
@@ -895,7 +895,7 @@ impl Assignment {
         Ok(())
     }
 
-    // TODO: add type for LAD
+    /// Runs the assignment microsimulation.
     pub fn run(&mut self) -> anyhow::Result<()> {
         // Deterministic ordering
         let msoas: BTreeSet<MSOA> = self
@@ -904,8 +904,9 @@ impl Assignment {
             .map(|person| person.msoa.to_owned())
             .collect();
 
-        // Run assignment over each MSOA
-        // TODO: add random permutation over MSOAs
+        // Run assignment over each MSOA.
+        // The order in which MSOAs are assigned does not affect determinism since all people are
+        // sampled conditional on MSOA.
         for msoa in msoas.iter() {
             let oas = self
                 .geog_lookup

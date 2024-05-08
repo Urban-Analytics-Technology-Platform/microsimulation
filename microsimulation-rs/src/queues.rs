@@ -1,6 +1,7 @@
-use std::{collections::BTreeMap, hash::Hash};
+use std::hash::Hash;
 
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
+use itertools::Itertools;
 use log::debug;
 use rand::{rngs::StdRng, seq::SliceRandom};
 use thiserror::Error;
@@ -54,15 +55,15 @@ fn get_closest_pid(
 #[derive(Debug)]
 pub struct Queues {
     pub matched: HashSet<PID>,
-    people_by_area_ase: BTreeMap<(MSOA, Age, Sex, Eth), Vec<PID>>,
-    adults_by_area_se: BTreeMap<(MSOA, Sex, Eth), Vec<PID>>,
-    adults_by_area_s: BTreeMap<(MSOA, Sex), Vec<PID>>,
-    adults_by_area: BTreeMap<MSOA, Vec<PID>>,
-    children_by_area_se: BTreeMap<(MSOA, Sex, Eth), Vec<PID>>,
-    children_by_area_s: BTreeMap<(MSOA, Sex), Vec<PID>>,
-    people_by_area_over_75: BTreeMap<MSOA, Vec<PID>>,
-    people_by_area_19_to_25: BTreeMap<MSOA, Vec<PID>>,
-    people_by_area_over_16: BTreeMap<MSOA, Vec<PID>>,
+    people_by_area_ase: HashMap<(MSOA, Age, Sex, Eth), Vec<PID>>,
+    adults_by_area_se: HashMap<(MSOA, Sex, Eth), Vec<PID>>,
+    adults_by_area_s: HashMap<(MSOA, Sex), Vec<PID>>,
+    adults_by_area: HashMap<MSOA, Vec<PID>>,
+    children_by_area_se: HashMap<(MSOA, Sex, Eth), Vec<PID>>,
+    children_by_area_s: HashMap<(MSOA, Sex), Vec<PID>>,
+    people_by_area_over_75: HashMap<MSOA, Vec<PID>>,
+    people_by_area_19_to_25: HashMap<MSOA, Vec<PID>>,
+    people_by_area_over_16: HashMap<MSOA, Vec<PID>>,
     total: usize,
 }
 
@@ -114,7 +115,7 @@ trait QueueOperations<K: Ord + Hash> {
     fn get_sample(&mut self, key: &K, matched: &mut HashSet<PID>) -> Option<PID>;
 }
 
-impl<K: Ord + Hash> QueueOperations<K> for BTreeMap<K, Vec<PID>> {
+impl<K: Ord + Hash> QueueOperations<K> for HashMap<K, Vec<PID>> {
     fn add_pid(&mut self, key: K, pid: PID) {
         {
             self.entry(key)
@@ -125,7 +126,7 @@ impl<K: Ord + Hash> QueueOperations<K> for BTreeMap<K, Vec<PID>> {
         }
     }
     fn shuffle(&mut self, rng: &mut StdRng) {
-        self.iter_mut().for_each(|(_, v)| v.shuffle(rng))
+        self.iter_mut().sorted().for_each(|(_, v)| v.shuffle(rng))
     }
     /// Given an MSOA, return a PID if one exists and update matched and unmatched sets.
     fn get_sample(&mut self, key: &K, matched: &mut HashSet<PID>) -> Option<PID> {
@@ -148,15 +149,15 @@ impl Queues {
     //   to String is to use &str and keep a map of PIDs to update after sampling. This is (~1.5x).
     // ---
     pub fn new(p_data: &TiVec<PID, Person>, rng: &mut StdRng) -> Self {
-        let mut people_by_area_ase: BTreeMap<(MSOA, Age, Sex, Eth), Vec<PID>> = BTreeMap::new();
-        let mut adults_by_area_se: BTreeMap<(MSOA, Sex, Eth), Vec<PID>> = BTreeMap::new();
-        let mut adults_by_area_s: BTreeMap<(MSOA, Sex), Vec<PID>> = BTreeMap::new();
-        let mut adults_by_area: BTreeMap<MSOA, Vec<PID>> = BTreeMap::new();
-        let mut children_by_area_se: BTreeMap<(MSOA, Sex, Eth), Vec<PID>> = BTreeMap::new();
-        let mut children_by_area_s: BTreeMap<(MSOA, Sex), Vec<PID>> = BTreeMap::new();
-        let mut people_by_area_over_75: BTreeMap<MSOA, Vec<PID>> = BTreeMap::new();
-        let mut people_by_area_19_to_25: BTreeMap<MSOA, Vec<PID>> = BTreeMap::new();
-        let mut people_by_area_over_16: BTreeMap<MSOA, Vec<PID>> = BTreeMap::new();
+        let mut people_by_area_ase: HashMap<(MSOA, Age, Sex, Eth), Vec<PID>> = HashMap::new();
+        let mut adults_by_area_se: HashMap<(MSOA, Sex, Eth), Vec<PID>> = HashMap::new();
+        let mut adults_by_area_s: HashMap<(MSOA, Sex), Vec<PID>> = HashMap::new();
+        let mut adults_by_area: HashMap<MSOA, Vec<PID>> = HashMap::new();
+        let mut children_by_area_se: HashMap<(MSOA, Sex, Eth), Vec<PID>> = HashMap::new();
+        let mut children_by_area_s: HashMap<(MSOA, Sex), Vec<PID>> = HashMap::new();
+        let mut people_by_area_over_75: HashMap<MSOA, Vec<PID>> = HashMap::new();
+        let mut people_by_area_19_to_25: HashMap<MSOA, Vec<PID>> = HashMap::new();
+        let mut people_by_area_over_16: HashMap<MSOA, Vec<PID>> = HashMap::new();
         p_data.iter_enumerated().for_each(|(pid, person)| {
             let (area, age, sex, eth) =
                 (person.msoa.to_owned(), person.age, person.sex, person.eth);
