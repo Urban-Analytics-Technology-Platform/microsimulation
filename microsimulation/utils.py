@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import humanleague as hl
 
+
 def get_config():
   parser = argparse.ArgumentParser(description="static sequential (population/household) microsimulation")
 
@@ -17,19 +18,21 @@ def get_config():
   args = parser.parse_args()
 
   with open(args.config) as config_file:
-    params = json.load(config_file)
+      params = json.load(config_file)
   # add the regions
   params["regions"] = args.regions
   return params
 
-def relEqual(x, y, tol = 2**-26): 
+
+def relEqual(x, y, tol = 2**-26):
   """
   Simple test for relative equality of floating point within tolerance
   Default tolerance is sqrt double epsilon i.e. about 7.5 significant figures
   """
   if y == 0:
-    return x == 0
+      return x == 0
   return abs(float(x) / float(y) - 1.) < tol
+
 
 def create_age_sex_marginal(est, lad):
   """
@@ -39,6 +42,7 @@ def create_age_sex_marginal(est, lad):
   tmp = est[est.GEOGRAPHY_CODE == lad].drop("GEOGRAPHY_CODE", axis=1)
   marginal = unlistify(tmp, ["GENDER", "C_AGE"], [2, 86], "OBS_VALUE")
   return marginal
+
 
 # this is a copy-paste from household_microsynth
 def unlistify(table, columns, sizes, values):
@@ -50,6 +54,7 @@ def unlistify(table, columns, sizes, values):
   array = np.zeros(sizes, dtype=int)
   array[tuple(pivot.index.codes)] = pivot.values.flat
   return array
+
 
 def listify(array, valuename, colnames):
   """
@@ -74,29 +79,32 @@ def remap(indices, mapping):
 
   return values
 
+
 def check_and_invert(columns, excluded):
   """
   Returns the subset of column names that is not in excluded
   """
   if isinstance(excluded, str):
-    excluded = [excluded]
+      excluded = [excluded]
 
   included = columns.tolist()
   for exclude in excluded:
-    if exclude in included:
-      included.remove(exclude)
+      if exclude in included:
+          included.remove(exclude)
   return included
+
 
 # TODO there is a lot of commonality in the 3 functions below
 def cap_value(table, colname, maxval, sumcolname):
   """
-  Aggregates values in column colname 
+  Aggregates values in column colname
   """
   table_under = table[table[colname] < maxval].copy()
   table_over = table[table[colname] >= maxval].copy().groupby(check_and_invert(table.columns.values, [colname, sumcolname]))[sumcolname].sum().reset_index()
   table_over[colname] = maxval
 
   return table_under.append(table_over, sort=False)
+
 
 def adjust_mye_age(mye):
   """
@@ -161,12 +169,13 @@ def adjust_pp_age(pp):
 
   return mye_adj
 
+
 def check_result(msynth):
   if isinstance(msynth, str):
-    raise ValueError(msynth)
+      raise ValueError(msynth)
   elif not msynth["conv"]:
-    print(msynth)
-    raise ValueError("convergence failure")
+      print(msynth)
+      raise ValueError("convergence failure")
 
 
 def microsynthesise_seed(dc1117, dc2101, dc6206):
@@ -198,9 +207,112 @@ def year_sequence(start_year, end_year):
   year_sequence(2005,2001) = [2005, 2004, 2003, 2002, 2001]
   """
   if start_year == end_year:
-    return [start_year]
+      return [start_year]
 
   if start_year < end_year:
-    return list(range(start_year, end_year + 1))
+      return list(range(start_year, end_year + 1))
 
   return list(range(start_year, end_year - 1, -1))
+
+
+def rescale_2018(regions):
+  """
+  This function produces marginals for IPF from the ONS LSOA level counts dataset from 2018.
+  The marginals produced are counts by age and sex, and the proportion of the total in each
+  region.
+  :param regions: The list of MSOA level geography regions within the microsimulation target.
+  :return: age_sex: A [2,86] ndArray of counts broken down by sex by age.
+          oa_prop: The proportion of the population within each MSOA.
+  """
+
+  # Read in the oa lookup file to combine LSOAs into MSOAs
+  pd_dir = "./persistent_data/"
+  oa_lookup = pd.read_csv(pd_dir + "OA_to_LSOA_to_MSOA_to_LAD_December_2017.csv", header=0)
+  oa_l2m = oa_lookup[['LSOA11CD', 'MSOA11CD']]  # Only need to keep LSOAs and MSOAs
+
+  # ONS data is split into male and female
+  ons_m = pd.read_csv(pd_dir + "males_lsoa_2018.csv")
+  ons_f = pd.read_csv(pd_dir + "females_lsoa_2018.csv")
+  ons_list = [ons_m, ons_f]
+
+  age_sex = pd.DataFrame()
+  oa_counts_list = []
+
+  # Work with male and female files separately, then combine the age_sex marginals into a [2,86] dataframe
+  # 1 row per gender (0 - male, 1 - female)
+  for ons in ons_list:
+    oa_count, age_array = get_2018_ONS_age_counts(ons, oa_l2m, regions)
+    # Store
+    age_sex = age_sex.append(age_array.transpose(), ignore_index=True)
+    oa_counts_list.append(oa_count)
+
+  # Now aggregate for all ages 85+
+  age_sex[85] = age_sex[[85, 86, 87, 88, 89, 90]].sum(axis=1)
+  age_sex = age_sex.drop([86, 87, 88, 89, 90], axis=1)
+
+  age_sex = age_sex.to_numpy()
+
+  # Now oa_prop
+  oa_prop = get_2018_ONS_oa_prop(oa_counts_list)
+
+  return age_sex, oa_prop
+
+
+def get_2018_ONS_age_counts(ons, oa_l2m, geog_map):
+  """
+  Function that calculates the counts by age of the population in the target region, for a
+  single gender
+  :param ons: LSOA level single gender dataset of population counts by age
+  :param oa_l2m: Lookup file for LSOA to MSOA
+  :return: Population counts by single year of age (top coded at 85)
+  """
+
+  # Merge lookup onto ONS files to aggregate LSOAs
+  ons_oa = pd.merge(left=ons,
+                    right=oa_l2m,
+                    how='left',
+                    left_on='Area Codes',
+                    right_on='LSOA11CD')
+
+  # Duplicates created in the merge
+  ons_oa = ons_oa.drop_duplicates()
+  # Now aggregate the LSOAs to get to MSOA level totals
+  ons_msoa = ons_oa.groupby('MSOA11CD').agg('sum').reset_index()
+  # Subset the data to include only the MSOAs in the region currently running
+  ons_msoa = ons_msoa[ons_msoa['MSOA11CD'].isin(geog_map)].reset_index()
+
+  # Aggregate to get counts by age
+  ons_agg = ons_msoa.sum(axis=0)
+  ons_agg.drop(labels=['index', 'MSOA11CD'], inplace=True)
+
+  # Make sure dtype is numeric & reset index to fix weird indexing issues after append
+  ons_agg = pd.to_numeric(ons_agg).reset_index(drop=True)
+  ons_df = pd.DataFrame(ons_agg)
+
+  return ons_msoa, ons_df
+
+
+def get_2018_ONS_oa_prop(oa_counts_list):
+  """
+  Returns the proportion by population within each MSOA in the target region
+  :param oa_counts_list: List of counts by region by age, separately by gender
+  :return: Proportion of the population within each MSOA
+  """
+
+  # Combine the male and female specific oa_counts dataframes
+  oa_counts = pd.concat(objs=[oa_counts_list[0], oa_counts_list[1]]).reset_index()
+  oa_counts = oa_counts.drop(['level_0', 'index'], axis=1)
+
+  # Groupby the geog code and sum to get counts by age in each region
+  oa_counts = oa_counts.groupby('MSOA11CD').sum()
+
+  # Now sum over all the ages
+  oa_counts = oa_counts.sum(axis=1)
+
+  # Calculate the proportion
+  oa_prop = oa_counts / oa_counts.sum(axis=0)
+  # Convert to numpy array and then done
+  oa_prop = oa_prop.to_numpy()
+
+  return oa_prop
+

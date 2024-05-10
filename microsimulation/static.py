@@ -42,6 +42,10 @@ class SequentialMicrosynthesis(common.Base):
     else:
       self.snpp_api = snppdata.SNPPData(cache_dir)
 
+      # Fix for double run
+      for k in self.snpp_api.data.keys():
+        self.snpp_api.data[k]['PROJECTED_YEAR_NAME'] = self.snpp_api.data[k]['PROJECTED_YEAR_NAME'].astype(int)
+
     # validation
     if not is_custom and self.variant not in nppdata.NPPData.VARIANTS:
       raise ValueError(self.variant + " is not a known projection variant")
@@ -81,13 +85,14 @@ class SequentialMicrosynthesis(common.Base):
 
       if year < self.snpp_api.min_year(self.region):
         source = " [MYE]"
-      elif year <= self.snpp_api.max_year(self.region):  
+      elif year <= self.snpp_api.max_year(self.region):
         source = " [SNPP]"
       else:
         source = " [XNPP]"
       print("Generating ", out_file, source, "... ",
             sep="", end="", flush=True)
       msynth = self.__microsynthesise(year)
+
       print("OK")
       msynth.to_csv(out_file, index_label="PID")
 
@@ -96,17 +101,20 @@ class SequentialMicrosynthesis(common.Base):
     # Census/seed proportions for geography and ethnicity
     oa_prop = self.seed.sum((1, 2, 3)) / self.seed.sum()
     eth_prop = self.seed.sum((0, 1, 2)) / self.seed.sum()
-   
+
     if year < self.snpp_api.min_year(self.region):
       age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.mye_api.filter(self.region, year)), self.region)
     elif year <= self.npp_api.max_year():
-      # Don't attempt to apply NPP variant if before the start of the NPP data, or it's a custom SNPP 
+      # Don't attempt to apply NPP variant if before the start of the NPP data, or it's a custom SNPP
       if year < self.npp_api.min_year() or self.is_custom:
         age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.filter(self.region, year)), self.region)
       else:
         age_sex = utils.create_age_sex_marginal(utils.adjust_pp_age(self.snpp_api.create_variant(self.variant, self.npp_api, self.region, year)), self.region)
     else:
       raise ValueError("Cannot microsimulate past NPP horizon year ({})", self.npp_api.max_year())
+
+    if year == 2018 and str(self.region[0]) in ['E', 'W'] and self.resolution == 'MSOA11':
+      age_sex, oa_prop = utils.rescale_2018(self.geog_map)
 
     # convert proportions/probabilities to integer frequencies
     oa = hl.prob2IntFreq(oa_prop, age_sex.sum())["freq"]
@@ -119,6 +127,9 @@ class SequentialMicrosynthesis(common.Base):
     # now the full seeded microsynthesis
     if self.fast_mode:
       msynth = hl.ipf(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float), age_sex.astype(float)])
+      if not msynth["conv"]:
+        print(f"Failed to converge with {year - 1} seed, retry applying epsilon...")
+        msynth = hl.ipf(self.seed + np.finfo(np.float64).tiny, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"].astype(float), age_sex.astype(float)])  
     else:
       msynth = hl.qisi(self.seed, [np.array([0, 3]), np.array([1, 2])], [oa_eth["result"], age_sex])
     if not msynth["conv"]:
@@ -195,4 +206,3 @@ class SequentialMicrosynthesis(common.Base):
 
     # seed defaults to census 11 data, updates as simulate past 2011
     self.seed = self.cen11.astype(float)
-
