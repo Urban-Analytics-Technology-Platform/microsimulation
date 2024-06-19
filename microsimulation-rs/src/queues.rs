@@ -279,7 +279,7 @@ impl Queues {
         }
     }
 
-    /// TODO: add doc comment
+    /// For given features (MSOA, age, sex, ethnicity, adult/child), returns unassigned person PID.
     pub fn sample_person(
         &mut self,
         msoa: &MSOA,
@@ -295,7 +295,6 @@ impl Queues {
         }
     }
 
-    /// TODO: add doc comment
     fn sample_adults(
         &mut self,
         msoa: &MSOA,
@@ -330,7 +329,6 @@ impl Queues {
         None
     }
 
-    /// TODO: add doc comment
     fn sample_children(
         &mut self,
         msoa: &MSOA,
@@ -339,7 +337,6 @@ impl Queues {
         eth: Eth,
         p_data: &TiVec<PID, Person>,
     ) -> Option<PID> {
-        // TODO: check the below conditions match the ones in python
         if let Some(v) = self
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
