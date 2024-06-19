@@ -169,7 +169,7 @@ impl Assignment {
         let mut h_data: TiVec<HID, Household> = read_csv(h_file)?;
         let mut p_data: TiVec<PID, Person> = read_csv(p_file)?;
 
-        // TODO: check the mapping
+        // Mapping from: https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L89
         if !scotland {
             let eth_mapping = [
                 (-1, 1),
@@ -197,11 +197,12 @@ impl Assignment {
             .collect::<HashMap<Eth, Eth>>();
             p_data = map_eth(p_data, &eth_mapping)?;
         } else {
-            // TODO: check the mapping
+            // Mapping from: https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L94
             let eth_mapping = [(-1, 1), (1, 1), (8, 2), (9, 3), (15, 4), (18, 5), (22, 6)]
                 .into_iter()
                 .map(|(x, y)| (Eth(x), Eth(y)))
                 .collect::<HashMap<Eth, Eth>>();
+            // Mapping from: https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L100
             let eth_remapping = [(-1, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 8)]
                 .into_iter()
                 .map(|(x, y)| (Eth(x), Eth(y)))
