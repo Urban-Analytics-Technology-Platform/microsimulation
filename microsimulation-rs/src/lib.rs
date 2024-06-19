@@ -52,7 +52,7 @@ impl Deref for MSOA {
         &self.0
     }
 }
-// TODO: use type instead of string in assignment
+
 #[derive(Hash, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OA(String);
 
