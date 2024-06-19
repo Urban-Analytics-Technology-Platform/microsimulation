@@ -384,6 +384,7 @@ impl Assignment {
             };
 
             // TODO: check why this is `.ethnicityew` and not `.eth`
+            // https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L330
             let eth: Eth = partner_sample.ethnicityew.into();
 
             // Sample a HR person
