@@ -1,20 +1,20 @@
-use crate::{household::HID, Age, Eth, EthEW, Sex, MSOA};
+use crate::{household::HID, Age, Eth, EthEW, Sex, ID, MSOA};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct PID(pub usize);
+pub struct PID(pub ID);
 impl std::fmt::Display for PID {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "PID #{}", self.0)
     }
 }
-impl From<usize> for PID {
-    fn from(value: usize) -> Self {
+impl From<ID> for PID {
+    fn from(value: ID) -> Self {
         Self(value)
     }
 }
 
-impl From<PID> for usize {
+impl From<PID> for ID {
     fn from(value: PID) -> Self {
         value.0
     }

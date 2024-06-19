@@ -12,6 +12,9 @@ use sha2::{Digest, Sha256};
 
 const ADULT_AGE: Age = Age(16);
 
+/// Type alias as a basis for people and household IDs.
+pub type ID = usize;
+
 fn digest(object: impl Serialize) -> anyhow::Result<String> {
     Ok(hex::encode(Sha256::digest(bincode::serialize(&object)?)))
 }

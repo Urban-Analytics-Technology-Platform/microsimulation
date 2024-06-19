@@ -1,18 +1,19 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{person::PID, Eth, OA};
+use crate::{person::PID, Eth, ID, OA};
 
 type UInt = u32;
 type Int = i32;
+
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct HID(pub usize);
+pub struct HID(pub ID);
 impl std::fmt::Display for HID {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "HID #{}", self.0)
     }
 }
-impl From<usize> for HID {
-    fn from(value: usize) -> Self {
+impl From<ID> for HID {
+    fn from(value: ID) -> Self {
         Self(value)
     }
 }
