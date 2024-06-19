@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    io::Read,
+    ops::Deref,
     path::{Path, PathBuf},
 };
 
@@ -31,11 +31,6 @@ use crate::{
     MSOA,
 };
 
-// TODO: remove, temporary helper for debugging.
-fn _input() {
-    std::io::stdin().read_exact(&mut [0]).unwrap();
-}
-
 #[derive(Debug)]
 pub struct Assignment {
     pub region: String,
@@ -61,21 +56,6 @@ fn read_geog_lookup(path: impl Into<PathBuf>) -> anyhow::Result<DataFrame> {
         .rename("LAD", "la")?
         .rename("LSOA", "lsoa")?;
     Ok(df)
-}
-
-// See example: https://docs.rs/polars/latest/polars/frame/struct.DataFrame.html#method.apply
-fn _replace_i32(mapping: &HashMap<i32, i32>) -> impl (Fn(&Series) -> Series) + '_ {
-    |series: &Series| -> Series {
-        series
-            .cast(&DataType::Int32)
-            .unwrap()
-            .i32()
-            .unwrap()
-            .into_iter()
-            .map(|opt_el: Option<i32>| opt_el.map(|el| *mapping.get(&el).unwrap_or(&el)))
-            .collect::<Int32Chunked>()
-            .into_series()
-    }
 }
 
 pub fn read_csv<P: AsRef<Path>, K, V: for<'a> Deserialize<'a>>(
@@ -908,20 +888,19 @@ impl Assignment {
         // The order in which MSOAs are assigned does not affect determinism since all people are
         // sampled conditional on MSOA.
         for msoa in msoas.iter() {
-            let oas = self
+            let oas: HashSet<OA> = self
                 .geog_lookup
                 .clone()
                 .lazy()
-                .filter(col("msoa").eq(lit(String::from(msoa.to_owned()))))
+                .filter(col("msoa").eq(lit(msoa.deref().to_owned())))
                 .select([col("oa")])
-                .collect()?;
-            let oas: HashSet<OA> = oas
+                .collect()?
                 .iter()
                 .next()
-                .unwrap()
+                .expect("OA series must be present given previous `.select(col('OA'))`")
                 .str()?
                 .into_iter()
-                .map(|el| el.unwrap().to_owned().into())
+                .flat_map(|el| el.map(|s| s.to_owned().into()))
                 .collect();
             info!(">>> MSOA: {}", msoa);
             info!(
@@ -989,7 +968,7 @@ impl Assignment {
         Ok(())
     }
 
-    // TODO: implement write record
+    /// Write outputs.
     pub fn write(&self, region: &str, config: &Config) -> anyhow::Result<()> {
         let dir = "outputs/";
         std::fs::create_dir_all(dir)?;
