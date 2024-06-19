@@ -307,7 +307,8 @@ impl Queues {
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+            // Note: closest not required since lookup includes age
+            if let Some(pid) = update_pid_vec(v, &mut self.matched) {
                 return Some(pid);
             }
         }
@@ -341,7 +342,8 @@ impl Queues {
             .people_by_area_ase
             .get_mut(&(msoa.to_owned(), age, sex, eth))
         {
-            if let Some(pid) = get_closest_pid(age, p_data, v, &mut self.matched) {
+            // Note: closest not required since lookup includes age
+            if let Some(pid) = update_pid_vec(v, &mut self.matched) {
                 return Some(pid);
             }
         }

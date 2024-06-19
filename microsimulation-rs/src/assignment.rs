@@ -1094,7 +1094,7 @@ mod tests {
     }
 
     const EXPECTED_DIGEST_0: &str =
-        "8bd375286de609f387535fe21d290faa3e61551a1e30c6352aed13347df60414";
+        "447ac3cf34d8eb6e9b9b68e721f6bfd0f7d27a749c084ab7c5547b8376579148";
 
     #[test]
     #[ignore = "single machine testing: not expected to be valid across platforms as exact digest used"]
