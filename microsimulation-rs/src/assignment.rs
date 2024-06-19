@@ -97,7 +97,6 @@ fn map_eth<K, V: GetSetEth>(
     data.into_iter()
         .map(|mut person| {
             match eth_mapping
-                // TODO: fix int types
                 .get(person.get_eth())
                 .cloned()
                 .ok_or(anyhow!("Invalid mapping."))
@@ -401,7 +400,7 @@ impl Assignment {
                 }
                 self.queues.debug_stats();
             } else {
-                // TODO consider returning error variant instead of logging
+                // TODO: consider returning error variant instead of logging
                 error!("No partner match!");
             }
         }
@@ -421,7 +420,6 @@ impl Assignment {
             .h_data
             .iter_mut()
             .filter(|household| {
-                // TODO: check condition as for other sample
                 oas.contains(&household.oa)
                     && household.lc4404_c_sizhuk11.eq(&num_occ)
                     && match parent {
@@ -474,10 +472,7 @@ impl Assignment {
         for household in hsp_ref {
             let hrpid = household.hrpid.expect("HRPID is not assigned.");
             let hrp_person = self.p_data.get(hrpid).expect("Invalid PID.");
-            let hrp_age = hrp_person.age;
-            // TODO: check why unused
-            let hrp_sex = hrp_person.sex;
-            let hrp_eth = hrp_person.eth;
+            let (hrp_age, hrp_sex, hrp_eth) = (hrp_person.age, hrp_person.sex, hrp_person.eth);
 
             // Pick dist
             let dist = match parent {
@@ -488,8 +483,8 @@ impl Assignment {
                 }),
                 Parent::Couple => {
                     if let Some(dist) = dist_by_ae.get(&(hrp_age, hrp_eth))
-                    // TODO: confirm handling: assignment.py, L437-L440
-                    // .unwrap_or_else(|| panic!("No matching {hrp_age}, {hrp_eth} in distribution.")),
+                    // TODO: confirm handling:
+                    // https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L437-L440
                     {
                         dist
                     } else {
@@ -501,7 +496,7 @@ impl Assignment {
                     }
                 }
             };
-            // Sample:: TODO: make sep fn
+            // Sample
             let child_sample_id = dist.choose_weighted(&mut self.rng, |item| item.1)?.0;
             let child_sample = self
                 .child_hrp_dist
@@ -509,7 +504,6 @@ impl Assignment {
                 .ok_or(anyhow!("Invalid HRPID: {child_sample_id}"))?;
             let age = child_sample.age;
             let sex = child_sample.sex;
-
             // TODO: check handling see L392 of assignment.py:
             // https://github.com/alan-turing-institute/microsimulation/blob/2373691bd0ff764db129e52ec78d71c58538d9af/microsimulation/assignment.py#L392
             // i.e. why is this `.ethnicityew` and not `.eth`
@@ -822,8 +816,8 @@ impl Assignment {
                 .iter()
                 .filter(|household| {
                     [2, 3].contains(&household.lc4408_c_ahthuk11)
-                    // TODO: should this be .ge(&4) if it is 2+ (not in python)
-                    // && household.lc4404_c_sizhuk11.eq(&4)
+                    // TODO: note different to python; if it is 2+ should be >=
+                    // https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L668
                     && household.lc4404_c_sizhuk11.ge(&4)
                     && household.filled.is_none()
                 })
@@ -847,6 +841,7 @@ impl Assignment {
                 .filter(|household| {
                     household.lc4408_c_ahthuk11.eq(&5)
                     // TODO: should the next line be included here (not in python) this be given 4+
+                    // https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L675
                     && household.lc4404_c_sizhuk11.ge(&4)
                     && household.filled.is_none()
                 })
@@ -918,10 +913,9 @@ impl Assignment {
             self.sample_hrp(msoa, &oas)?;
             self.info_stats();
 
-            // TODO: mark_filled bools set to match python, check these are correct
-
             // Sample partner
             // TODO: check all partners assigned (from python)
+            // https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L136
             info!(">>> Assigning partners to HRPs where appropriate");
             self.sample_partner(msoa, &oas)?;
             self.info_stats();
@@ -939,11 +933,13 @@ impl Assignment {
             self.info_stats();
 
             // # TODO if partner hasnt been assigned then household may be incorrectly marked filled
+            // https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L150
             info!(">>> Assigning child 1 to couple households");
             self.sample_child(msoa, &oas, 3, true, Parent::Couple)?;
             self.info_stats();
 
             // # TODO if partner hasnt been assigned then household may be incorrectly marked filled
+            // https://github.com/Urban-Analytics-Technology-Platform/microsimulation/blob/bbf418c7de9e1ef392e7938052e0038da4636931/microsimulation/assignment.py#L155
             info!(">>> Assigning child 2 to couple households");
             self.sample_child(msoa, &oas, 4, false, Parent::Couple)?;
             self.info_stats();
