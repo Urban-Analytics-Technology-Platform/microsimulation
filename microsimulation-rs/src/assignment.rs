@@ -974,9 +974,9 @@ impl Assignment {
         // Serialize people
         // TODO: wrap in function
         let mut writer = Writer::from_writer(vec![]);
-        self.p_data.iter().for_each(|person| {
-            writer.serialize(person).unwrap();
-        });
+        for person in self.p_data.iter() {
+            writer.serialize(person)?;
+        }
         let data = String::from_utf8(writer.into_inner()?)?;
         let path = format!(
             "{dir}/rs_ass_{}_{}_{}.csv",
@@ -986,9 +986,9 @@ impl Assignment {
 
         // Serialize households
         let mut writer = Writer::from_writer(vec![]);
-        self.h_data.iter().for_each(|household| {
-            writer.serialize(household).unwrap();
-        });
+        for household in self.h_data.iter() {
+            writer.serialize(household)?;
+        }
         let data = String::from_utf8(writer.into_inner()?)?;
         let path = format!(
             "{dir}/rs_ass_hh_{}_{}_{}.csv",
