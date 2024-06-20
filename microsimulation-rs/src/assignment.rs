@@ -720,9 +720,7 @@ impl Assignment {
     }
 
     pub fn check(&self) -> anyhow::Result<()> {
-        info!("---");
         info!("Checking...");
-        info!("---");
         info!(
             "Occupied households without HRP: {}",
             self.h_data
