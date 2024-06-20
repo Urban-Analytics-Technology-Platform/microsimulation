@@ -128,7 +128,6 @@ impl<K: Ord + Hash> QueueOperations<K> for HashMap<K, Vec<PID>> {
     fn shuffle(&mut self, rng: &mut StdRng) {
         self.iter_mut().sorted().for_each(|(_, v)| v.shuffle(rng))
     }
-    /// Given an MSOA, return a PID if one exists and update matched and unmatched sets.
     fn get_sample(&mut self, key: &K, matched: &mut HashSet<PID>) -> Option<PID> {
         let v = self.get_mut(key).expect("Invalid MSOA.");
         update_pid_vec(v, matched)

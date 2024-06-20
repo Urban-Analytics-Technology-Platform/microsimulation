@@ -3,9 +3,9 @@ use log::info;
 use microsimulation::{assignment::Assignment, config::Config};
 
 fn cli() -> Command {
-    Command::new("SPENSER")
+    Command::new("microsimulation-rs")
         .about(format!(
-            "SPENSER: assignment of people and households v{}\n\n",
+            "microsimulation-rs: assignment of people and households v{}\n\n",
             env!("CARGO_PKG_VERSION")
         ))
         .arg_required_else_help(true)

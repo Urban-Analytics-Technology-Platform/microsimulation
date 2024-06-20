@@ -968,6 +968,7 @@ impl Assignment {
 
     /// Write outputs.
     pub fn write(&self, region: &str, config: &Config) -> anyhow::Result<()> {
+        // TODO: make configurable
         let dir = "outputs/";
         std::fs::create_dir_all(dir)?;
 
@@ -979,7 +980,7 @@ impl Assignment {
         }
         let data = String::from_utf8(writer.into_inner()?)?;
         let path = format!(
-            "{dir}/rs_ass_{}_{}_{}.csv",
+            "{dir}/ass_{}_{}_{}.csv",
             region, config.person_resolution, config.year
         );
         std::fs::write(path, data)?;
@@ -991,7 +992,7 @@ impl Assignment {
         }
         let data = String::from_utf8(writer.into_inner()?)?;
         let path = format!(
-            "{dir}/rs_ass_hh_{}_{}_{}.csv",
+            "{dir}/ass_hh_{}_{}_{}.csv",
             region, config.household_resolution, config.year
         );
         std::fs::write(path, data)?;
