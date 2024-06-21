@@ -52,6 +52,13 @@ fn get_closest_pid(
     }
 }
 
+/// Queues for sampling and matching. Each non-pub field provides a map for different key types to a
+/// `Vec<PID` (queue) of PIDs to be assigned. Matched maintains a set of assigned PIDs to prevent
+/// candidate PIDs being assigned multiple times.
+///
+/// Notes on performance:
+///   - BTreeMap and HashMap have similar performance for small size from benchmarks.
+///   - MSOA (wrapped String) type is used in the lookups. Using &str would be better but lifetimes
 #[derive(Debug)]
 pub struct Queues {
     pub matched: HashSet<PID>,
@@ -135,18 +142,6 @@ impl<K: Ord + Hash> QueueOperations<K> for HashMap<K, Vec<PID>> {
 }
 
 impl Queues {
-    // Construct queues for sampling and matching
-    // ---
-    // Performance notes:
-    //
-    // - BTreeMap needed for deterministic shuffling upon iterating
-    //   HashMap lookups much faster (~2x), consider getting list of sorted keys instead for the
-    //   shuffle instead and revert to hashmap to get this performance improvement.
-    //
-    // - MSOA (wrapped String) type is used in the lookups. Using &str would be better but there is
-    //   an issue with a mutable borrow of person during the assignment of household. An alternative
-    //   to String is to use &str and keep a map of PIDs to update after sampling. This is (~1.5x).
-    // ---
     pub fn new(p_data: &TiVec<PID, Person>, rng: &mut StdRng) -> Self {
         let mut people_by_area_ase: HashMap<(MSOA, Age, Sex, Eth), Vec<PID>> = HashMap::new();
         let mut adults_by_area_se: HashMap<(MSOA, Sex, Eth), Vec<PID>> = HashMap::new();
