@@ -846,7 +846,7 @@ impl Assignment {
                 .count(),
         );
         info!(
-            "Adults not assigned {} of {}",
+            "Adults not assigned: {} of {}",
             self.p_data
                 .iter()
                 .filter(|person| { person.age.gt(&ADULT_AGE) && person.hid.is_none() })
@@ -857,7 +857,7 @@ impl Assignment {
                 .count()
         );
         info!(
-            "Children not assigned {} of {}",
+            "Children not assigned: {} of {}",
             self.p_data
                 .iter()
                 .filter(|person| { person.age.le(&ADULT_AGE) && person.hid.is_none() })
