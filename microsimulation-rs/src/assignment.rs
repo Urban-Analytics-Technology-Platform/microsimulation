@@ -966,9 +966,8 @@ impl Assignment {
 
     /// Write outputs.
     pub fn write(&self, region: &str, config: &Config) -> anyhow::Result<()> {
-        // TODO: make configurable
-        let dir = "outputs/";
-        std::fs::create_dir_all(dir)?;
+        let dir = config.output_dir();
+        std::fs::create_dir_all(dir.clone())?;
 
         // Serialize people
         // TODO: wrap in function
@@ -977,10 +976,10 @@ impl Assignment {
             writer.serialize(person)?;
         }
         let data = String::from_utf8(writer.into_inner()?)?;
-        let path = format!(
-            "{dir}/ass_{}_{}_{}.csv",
+        let path = dir.join(format!(
+            "ass_{}_{}_{}.csv",
             region, config.person_resolution, config.year
-        );
+        ));
         std::fs::write(path, data)?;
 
         // Serialize households
@@ -989,10 +988,10 @@ impl Assignment {
             writer.serialize(household)?;
         }
         let data = String::from_utf8(writer.into_inner()?)?;
-        let path = format!(
-            "{dir}/ass_hh_{}_{}_{}.csv",
+        let path = dir.join(format!(
+            "ass_hh_{}_{}_{}.csv",
             region, config.household_resolution, config.year
-        );
+        ));
         std::fs::write(path, data)?;
         Ok(())
     }
@@ -1019,6 +1018,7 @@ mod tests {
             year: Year(2020),
             data_dir: PathBuf::from_str("tests/data/").unwrap(),
             persistent_data_dir: Some(PathBuf::from_str(PERSISTENT_DATA_DIR).unwrap()),
+            output_dir: None,
             profile: false,
         };
         static ref ENV_LOGGER: () = env_logger::init();

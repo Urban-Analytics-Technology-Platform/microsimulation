@@ -51,6 +51,7 @@ pub struct Config {
     pub data_dir: PathBuf,
     pub persistent_data_dir: Option<PathBuf>,
     pub profile: bool,
+    pub output_dir: Option<PathBuf>,
 }
 
 impl Config {
@@ -58,5 +59,10 @@ impl Config {
         self.persistent_data_dir
             .clone()
             .unwrap_or(PathBuf::from_str("persistent_data/").unwrap())
+    }
+    pub fn output_dir(&self) -> PathBuf {
+        self.output_dir
+            .clone()
+            .unwrap_or(PathBuf::from_str("outputs/").unwrap())
     }
 }

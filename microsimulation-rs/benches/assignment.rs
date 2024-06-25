@@ -20,6 +20,7 @@ lazy_static! {
         year: Year(2020),
         data_dir: PathBuf::from_str("../data/").unwrap(),
         persistent_data_dir: Some(PathBuf::from_str("../persistent_data/").unwrap()),
+        output_dir: None,
         profile: false,
     };
 }
