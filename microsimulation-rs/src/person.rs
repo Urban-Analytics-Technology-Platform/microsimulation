@@ -110,7 +110,6 @@ pub struct ChildHRPerson {
     pub n: usize,
 }
 
-// See:
 fn deserialize_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
 where
     D: serde::de::Deserializer<'de>,
