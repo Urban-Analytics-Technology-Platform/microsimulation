@@ -2,9 +2,11 @@
 
 ## Summary
 
-This crate aims to provide a mirror of the functionality of the [microsimulation](https://github.com/nismod/microsimulation) package, with deterministic simulation, revised implementation and written in Rust for improved performance.
+This package aims to provide a mirror of the functionality of the [microsimulation](https://github.com/nismod/microsimulation) package, with seedable simulation, a revised implementation and written in Rust for improved performance.
 
-With determinism and improved performance, the crate aims to facilitate the generation of ensembles of populations for uncertainty and scenario modelling, for example, for use as a base population for the [Synthetic Population Catalyst](https://github.com/alan-turing-institute/uatk-spc).
+Since the assignment algorithm and output schema aim to be the same as `microsimulation`, the package can be used as a drop-in substitute.
+
+With improved performance, the crate aims to facilitate the generation of ensembles of populations for uncertainty and scenario modelling, for example, as an ensemble of base populations for the [Synthetic Population Catalyst](https://github.com/alan-turing-institute/uatk-spc).
 
 ## Quickstart
 
@@ -31,16 +33,16 @@ With determinism and improved performance, the crate aims to facilitate the gene
 
 The implementation aims to be as close as possible to the original Python code, with the following changes:
 
-- **Queue algorithm**: Sampling of sets of unassigned people for a given set of conditions (e.g. MSOA, age) is implemented through a [Queue](src/queues.rs) type. This type maintains multiple queues of mapping keys such as `(MSOA, Age)` to queues of person IDs (type `PID`) that can be assigned, maintained in a `Vec<PID>`. To ensure that no person is assigned more than once, a separate assigned set (type `HashSet<PID>`) is maintained. For a given `PID` a check is performed to ensure that the `PID` is not contained in the assigned set.
-- **New type pattern**: We make use of the [New Type Idiom](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) to enable function signatures to carry documentation as well as for compile-time checks for correct variable usage. For example, the `struct MSOA(String)` and `struct OA(String)` types allow similar codes to be distinguished in their usage.
-- **Deterministic simulation**: random seeding is included throughout the simulation and can be set from the CLI
-- **Logging**: We use [env_logger](https://crates.io/crates/env_logger) to log messages for info, warning, debug and error cases.
+- **Queue algorithm**: Sampling of sets of unassigned people for a given set of conditions (e.g. MSOA, age) is implemented through a [`Queues`](src/queues.rs#L63) type. This type maintains multiple queues of mapping keys such as `(MSOA, Age)` to queues of person IDs (`PID`) that can be assigned, maintained in a `Vec<PID>`. To ensure that no person is assigned more than once, a separate assigned set (type `HashSet<PID>`) is maintained. For a given `PID` a check is performed to ensure that the `PID` is not contained in the assigned set.
+- **New type pattern**: We make use of the [newtype pattern](https://doc.rust-lang.org/rust-by-example/generics/new_types.html) to enable function signatures to carry documentation as well compile-time checks for correct variable usage. For example, the `struct MSOA(String)` and `struct OA(String)` types allow similar codes to be distinguished in their usage.
+- **Deterministic simulation**: random seeding is included throughout the simulation and can be set from the CLI.
+- **Logging**: We use [env_logger](https://crates.io/crates/env_logger) to log messages distinguishing info, warning, debug and error cases.
 
 ## Benches
 
 Benchmarks can be run for `microsimulation-rs` using `cargo bench`.
 
-For comparison with the python version, we can run the assignment script:
+For comparison with the Python version, we can run the assignment script:
 
 ```
 # microsimulation
