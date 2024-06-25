@@ -108,3 +108,20 @@ run.sh.o*
 run.sh.e*
 logs/
 profile.*.out
+# nomis secrets
+scripts/scp/NOMIS_API_KEY.txt
+# azure secrets
+config.py
+AH_notes.md
+scripts/scp/NOMIS_API_KEY.txt
+__*
+.vscode/*
+*.DS_Store
+# notebooks
+*.ipynb
+notebooks/
+
+# microsimulation-rs
+target/
+outputs/
+data
